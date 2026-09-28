@@ -12,6 +12,7 @@ ENV_FILE := .env
 UV_RUN := $(UV) run --frozen $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 
 INFRA_SERVICES := kafka postgres redis mlflow prometheus grafana
+APP_SERVICES := market-producer
 
 .PHONY: help
 help: ## Show this help
@@ -28,8 +29,9 @@ env: ## Create .env from .env.example (never overwrites)
 	else cp .env.example $(ENV_FILE) && echo "created $(ENV_FILE) - change the passwords"; fi
 
 # --- local stack --------------------------------------------------------------
-.PHONY: dev infra-up down clean ps logs compose-config topics migrate kafka-ui
-dev: infra-up ## Start the full local stack (grows as phases add services)
+.PHONY: dev infra-up down clean ps logs compose-config topics migrate kafka-ui tail-raw
+dev: infra-up ## Start the full local stack: infrastructure + application services
+	$(COMPOSE) up -d --build --wait $(APP_SERVICES)
 
 infra-up: $(ENV_FILE) ## Build + start infrastructure, run migrations & topic provisioning
 	$(COMPOSE) build db-migrate
@@ -57,6 +59,11 @@ topics: ## (Re)provision Kafka topics from shared/kafka/topics.py
 
 migrate: ## Apply database migrations
 	$(COMPOSE) run --rm db-migrate
+
+tail-raw: ## Print the next 5 events on market.raw (sanity check)
+	$(COMPOSE) exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
+		--bootstrap-server localhost:9092 --topic market.raw --max-messages 5 \
+		--property print.key=true --property print.headers=true
 
 kafka-ui: ## Start Kafka UI on http://localhost:8081
 	$(COMPOSE) --profile tools up -d kafka-ui

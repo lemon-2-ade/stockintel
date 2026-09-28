@@ -22,7 +22,10 @@ x-platform-tools: &platform-tools
   image: stockintel/platform-tools:dev
   build:
     context: .
-    dockerfile: infrastructure/docker/platform-tools.Dockerfile
+    dockerfile: infrastructure/docker/python-service.Dockerfile
+    args:
+      PACKAGE: stockintel-shared
+      UV_EXTRAS: --extra kafka --extra db
   logging: *logging
   restart: "no"
   environment:
@@ -215,6 +218,46 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    logging: *logging
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Application services
+  # --------------------------------------------------------------------------
+  market-producer:
+    image: stockintel/market-producer:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/python-service.Dockerfile
+      args:
+        PACKAGE: stockintel-market-producer
+    command: ["python", "-m", "market_producer.main"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      PRODUCER_MODE: ${PRODUCER_MODE:-simulator}
+      PRODUCER_SYMBOLS: ${PRODUCER_SYMBOLS:-}
+      PRODUCER_INTERVAL: ${PRODUCER_INTERVAL:-1s}
+      PRODUCER_BACKFILL_BARS: ${PRODUCER_BACKFILL_BARS:-300}
+      PRODUCER_SEED: ${PRODUCER_SEED:-42}
+      PRODUCER_VOLATILITY_MULTIPLIER: ${PRODUCER_VOLATILITY_MULTIPLIER:-1.0}
+      PRODUCER_PRICE_JUMP_PROBABILITY: ${PRODUCER_PRICE_JUMP_PROBABILITY:-0.001}
+      PRODUCER_VOLUME_SPIKE_PROBABILITY: ${PRODUCER_VOLUME_SPIKE_PROBABILITY:-0.002}
+      PRODUCER_METRICS_PORT: "8001"
+    ports:
+      - "127.0.0.1:8001:8001"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/metrics', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # SIGTERM -> flush in-flight events before the container is killed.
+    stop_grace_period: 20s
     logging: *logging
     restart: unless-stopped
 
