@@ -10,8 +10,8 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 1 of 14 complete** (architecture, contracts,
-> infrastructure). See the [roadmap](docs/ROADMAP.md). This README is extended
+> **Project status: Phase 2 of 14 complete** (architecture, contracts,
+> infrastructure, training dataset, market simulator and Kafka producer). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -38,7 +38,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phase 1)
+## What is in place (Phases 1-2)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -59,6 +59,15 @@ Full diagrams, component responsibilities and design decisions:
   16, Redis 7 (cache-only), MLflow 3 (Postgres backend, proxied artifacts),
   Prometheus, Grafana, optional Kafka UI; one-shot jobs for migrations and
   topic provisioning; health checks; localhost-only ports; secrets from `.env`.
+- **Training dataset** (`ml/`): daily OHLCV for 12 US large caps, 2010-2026,
+  from a CC0 dataset pinned to an exact commit, SHA-256-locked, stored as an
+  immutable read-only snapshot ([details](docs/DATA_PIPELINE.md)).
+- **Market producer** (`services/market-producer`): a GBM simulator
+  calibrated per symbol from that history, with continuous OHLC paths,
+  volume/volatility coupling and labelled price/volume anomalies; a historical
+  replay mode; idempotent Kafka publishing with delivery accounting, bounded
+  backpressure, Prometheus metrics and graceful shutdown
+  ([details](docs/MARKET_PRODUCER.md)).
 - **Engineering baseline**: uv workspace + lockfile, ruff, mypy `--strict`,
   pytest with unit/integration split, pre-commit (incl. secret scanning),
   structured JSON logging with secret redaction, bounded retries with jitter.
@@ -81,6 +90,10 @@ Full diagrams, component responsibilities and design decisions:
 
 ```
 .
+├── services/
+│   └── market-producer/     # simulator + replay providers -> market.raw
+├── ml/                      # stockml: dataset acquisition, calibration (later: features, training)
+│   └── datasets/            # pinned dataset specs + checksum lock files
 ├── shared/                  # stockintel-shared: contracts used by every service
 │   └── src/shared/
 │       ├── schemas/         # versioned Kafka event models + registry
@@ -89,7 +102,7 @@ Full diagrams, component responsibilities and design decisions:
 │       ├── observability/   # structured logging
 │       └── utils/           # retry/backoff
 ├── infrastructure/
-│   ├── docker/              # platform-tools + MLflow images
+│   ├── docker/              # generic Python-service image + MLflow image
 │   ├── postgres/init/       # first-boot SQL (MLflow DB/role)
 │   ├── prometheus/          # scrape config
 │   └── grafana/             # provisioned datasource + dashboards
@@ -102,9 +115,8 @@ Full diagrams, component responsibilities and design decisions:
 └── .env.example
 ```
 
-Planned additions, each in the phase that implements it: `services/market-producer`,
-`services/stream-processor`, `services/model-monitor`, `apps/api`,
-`apps/inference`, `apps/frontend`, `ml/{data,features,training,evaluation,pipelines}`,
+Planned additions, each in the phase that implements it: `services/stream-processor`, `services/model-monitor`, `apps/api`,
+`apps/inference`, `apps/frontend`, `ml` features/training/evaluation,
 `infrastructure/terraform`, `scripts/`, `.github/workflows/`.
 
 ## Getting started
@@ -115,8 +127,10 @@ Prerequisites: Docker with Compose v2, GNU Make, and
 ```bash
 make env          # create .env from .env.example, then edit the passwords
 make install      # Python deps + git hooks
-make dev          # build images, start the stack, migrate DB, provision topics
+make data         # download + verify the historical training dataset (~4.5 MB)
+make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
+make tail-raw     # peek at live events on market.raw
 ```
 
 | Service | URL |
@@ -127,6 +141,7 @@ make ps           # everything should be "healthy"
 | MLflow | http://localhost:5000 |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3000 |
+| Producer metrics | http://localhost:8001/metrics |
 | Kafka UI (`make kafka-ui`) | http://localhost:8081 |
 
 ### Quality checks
@@ -145,6 +160,7 @@ make help              # all targets
   semantics, DLQ, backpressure, shutdown
 - [Data model](docs/DATA_MODEL.md): storage responsibilities, ER diagram, indexes
 - [Data pipeline](docs/DATA_PIPELINE.md): training dataset, provenance, acquisition, calibration
+- [Market producer](docs/MARKET_PRODUCER.md): simulator model, anomalies, replay, delivery
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 

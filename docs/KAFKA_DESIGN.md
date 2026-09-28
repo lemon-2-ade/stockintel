@@ -63,6 +63,9 @@ All events share a versioned envelope (`shared.schemas.base.BaseEvent`):
 }
 ```
 
+- Simulator-only header **`x-sim-injected-anomaly`** carries ground-truth
+  labels for injected anomalies (see `MARKET_PRODUCER.md`). It is metadata for
+  evaluation and never part of the event contract.
 - `(event_type, schema_version)` identifies the Pydantic model
   (`shared.schemas.registry`). Both are also written as **Kafka headers** so
   infrastructure can route/count without parsing, while the payload stays
