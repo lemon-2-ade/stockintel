@@ -39,7 +39,13 @@ log = get_logger(__name__)
 
 TRADING_DAYS_PER_YEAR = 252
 DEFAULT_OUTPUT = (
-    REPO_ROOT / "services" / "market-producer" / "calibration" / "us-equities-daily.json"
+    REPO_ROOT
+    / "services"
+    / "market-producer"
+    / "src"
+    / "market_producer"
+    / "calibrations"
+    / "us-equities-daily.json"
 )
 OHLCV = ["open", "high", "low", "close", "volume"]
 

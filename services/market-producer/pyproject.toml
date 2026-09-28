@@ -1,0 +1,23 @@
+[project]
+name = "stockintel-market-producer"
+version = "0.1.0"
+description = "Market data producer: GBM simulator or historical replay -> Kafka market.raw"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared[kafka]",
+    "numpy>=2.1",
+    "prometheus-client>=0.21",
+]
+
+[project.scripts]
+market-producer = "market_producer.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/market_producer"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }

@@ -7,7 +7,7 @@ flowchart LR
     VAL -->|Phase 5| CLEAN[cleaned]
     CLEAN -->|Phase 6| FEAT[features]
     FEAT --> TRAIN[training dataset]
-    RAW -->|make calibrate| CAL[simulator calibration<br/>services/market-producer/calibration]
+    RAW -->|make calibrate| CAL[simulator calibration<br/>market_producer/calibrations]
 ```
 
 Status: **acquisition and simulator calibration are implemented** (Phase 2).
@@ -99,7 +99,7 @@ directory stays untouched, so earlier experiments remain reproducible.
 
 `python -m stockml.data.calibrate` estimates per-symbol parameters from the
 last 756 trading days (3 years) and writes
-[`services/market-producer/calibration/us-equities-daily.json`](../services/market-producer/calibration/us-equities-daily.json):
+[`market_producer/calibrations/us-equities-daily.json`](../services/market-producer/src/market_producer/calibrations/us-equities-daily.json):
 starting price, annualised volatility and drift of daily log returns, median
 daily volume and log-volume dispersion. The simulator reads this small,
 committed file, so the producer does not depend on pandas or on the raw data.
