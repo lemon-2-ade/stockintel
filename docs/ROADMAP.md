@@ -7,10 +7,10 @@ done; nothing is claimed that has not been run.
 | Phase | Scope | Exit criteria | Status |
 | --- | --- | --- | --- |
 | 1 | Architecture, repo + tooling, Docker infrastructure, event contracts, topic topology, DB schema | lint/type/unit tests green; migrations verified against PostgreSQL 16; compose file validates. The Kafka integration test is written but has not yet run against a live broker: run `make dev && make test-integration` locally (CI runs it from Phase 13) | **done** |
-| 2 | Market simulator (GBM, configurable volatility/drift/seed, injected spikes/drops/volume bursts), provider abstraction, Kafka producer service with delivery reports, metrics, graceful shutdown | deterministic simulator tests (fixed seed); producer -> Kafka integration test; events validate against schema | next |
+| 2 | Historical dataset acquisition (pinned + checksummed) and simulator calibration; market simulator (GBM, configurable volatility/drift/seed, injected spikes/drops/volume bursts), provider abstraction, Kafka producer service with delivery reports, metrics, graceful shutdown | deterministic simulator tests (fixed seed); producer -> Kafka integration test; events validate against schema | next |
 | 3 | Stream processor: incremental SMA/EMA/RSI/MACD/Bollinger/volatility, bounded per-symbol state, event-time handling, late/duplicate policy, rule-based anomaly detection, DLQ handling, processing-latency metric | indicator values match a pandas reference implementation; redelivery does not change results; poison message lands in DLQ | |
 | 4 | Persistence consumer (batched idempotent upserts), Redis latest-state writer, FastAPI (REST, WebSocket, health/ready/metrics, pagination, rate limit, CORS) | API integration tests against Postgres/Redis; WebSocket throttling test | |
-| 5 | Historical dataset acquisition (provider abstraction, immutable raw snapshot), validation and documented cleaning | data-quality report; tests for each validation rule | |
+| 5 | Validation and documented cleaning of the historical snapshot (acquisition landed early, in Phase 2) | data-quality report; tests for each validation rule | |
 | 6 | Shared offline/online feature library, leakage tests, chronological splits, baselines (naive, logistic/linear) | leakage test proves features at T use only data <= T; baseline metrics logged | |
 | 7 | Gradient-boosted models (LightGBM/XGBoost), walk-forward validation, optional sequence model experiment, cost-aware backtest | comparison table vs baselines, with honest interpretation | |
 | 8 | MLflow tracking + registry (candidate/challenger/champion aliases), explicit promotion CLI with audit log, inference service | model loads from registry; `/predict` contract tests; latency measured | |
@@ -32,12 +32,10 @@ cannot leak across a boundary), plus walk-forward validation. Baselines first.
 
 ## Open questions, decided in the phase that needs them
 
-1. **Historical dataset (Phase 5).** Candidates: Stooq daily CSVs (free, no
-   key), Yahoo Finance via `yfinance` (convenient, but its terms restrict
-   redistribution), Kaggle datasets (account required), Alpha Vantage free tier
-   (rate limited, key required). Criteria: reproducible download, licence that
-   permits local research use, no committed data (a script + checksum
-   instead).
+1. ~~**Historical dataset.**~~ Decided in Phase 2: a pinned, checksum-locked
+   snapshot of a CC0 Hugging Face dataset with daily bars for 12 US large
+   caps (2010-2026). Details and the alternatives rejected are in
+   [DATA_PIPELINE.md](DATA_PIPELINE.md).
 2. **Interval mismatch between training and live data (Phase 5/6).** Free
    long-history data is daily, while the live demo streams sub-minute
    simulated bars. Plan: features are scale-free (returns, ratios, z-scores,

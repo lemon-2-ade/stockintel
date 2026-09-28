@@ -1,0 +1,54 @@
+{
+  "dataset": "us-equities-daily",
+  "revision": "5ee174781f6592de213df233339fcacb118dc492",
+  "files": {
+    "AAPL": {
+      "sha256": "59f339ae06feac1e897832f252b84c3d320d919f51098d7aaa13d5b8e54cb074",
+      "bytes": 387143
+    },
+    "AMZN": {
+      "sha256": "1b52959b8cd35a71dc0028d22d55cf2519dc29a0b4e18683d585d35d57477ee4",
+      "bytes": 384841
+    },
+    "GOOGL": {
+      "sha256": "52499f2ab7fb42843e34a0af7c14d353d0cafa5ba403fd4f3286c26d799c620d",
+      "bytes": 388503
+    },
+    "JNJ": {
+      "sha256": "ad4a76cec1657de049f082e4eb4bc21b91f6b111bf0adbecb09480e9e7960446",
+      "bytes": 376724
+    },
+    "JPM": {
+      "sha256": "d1bacb6856bef649041b4fd0e5d9f3d3ebe3f8658a90f2dd673745baeaa511e2",
+      "bytes": 379923
+    },
+    "META": {
+      "sha256": "6b7ce919e97bbae690da360a1d7d918ea3d9812f699c1cdd19411f2cb24c886b",
+      "bytes": 321852
+    },
+    "MSFT": {
+      "sha256": "dd6cc44e6501aa6288c011c8eb450e86966c3faa9047662cc89ebfcb13259a4a",
+      "bytes": 380586
+    },
+    "NVDA": {
+      "sha256": "947354a5e989308c4da6ab6ff0f6661e87a2556e4de71ac82551c9e3dcd28f0a",
+      "bytes": 399512
+    },
+    "PG": {
+      "sha256": "c34a75059b37fa87e2a2796523398432a7e695148b702073a1886196d69bc2cc",
+      "bytes": 376191
+    },
+    "TSLA": {
+      "sha256": "3e4140274fb63f8d027f363e2b0f09f834d8145227514abb8a1cbe6d37ccb155",
+      "bytes": 378568
+    },
+    "WMT": {
+      "sha256": "8679cd87c78b4ef1742a765800a33ba70bcbccd7cb45a4505c838b0b531340d8",
+      "bytes": 389565
+    },
+    "XOM": {
+      "sha256": "9a20badf68dfe355e8f0948291ead4960ffa789abbbae25b78d08622c4811727",
+      "bytes": 377136
+    }
+  }
+}

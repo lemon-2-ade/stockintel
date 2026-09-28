@@ -7,7 +7,7 @@ requires-python = ">=3.12,<3.14"
 # The root is a virtual workspace: it installs nothing itself, it only pins the
 # members and the shared developer tool-chain. Each service declares its own
 # runtime dependencies so its Docker image stays small.
-dependencies = ["stockintel-shared[kafka,db]"]
+dependencies = ["stockintel-shared[kafka,db]", "stockintel-ml"]
 
 [dependency-groups]
 dev = [
@@ -16,16 +16,18 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.8",
     "pre-commit>=4.0",
+    "pandas-stubs>=2.2",
 ]
 
 [tool.uv]
 package = false
 
 [tool.uv.workspace]
-members = ["shared"]
+members = ["shared", "ml"]
 
 [tool.uv.sources]
 stockintel-shared = { workspace = true }
+stockintel-ml = { workspace = true }
 
 # --------------------------------------------------------------------------- #
 # Ruff                                                                         #
@@ -60,7 +62,7 @@ ignore = [
 "**/migrations/versions/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["shared"]
+known-first-party = ["shared", "stockml"]
 
 # --------------------------------------------------------------------------- #
 # Mypy                                                                         #
@@ -70,9 +72,9 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
-mypy_path = ["shared/src", "tests"]
+mypy_path = ["shared/src", "ml/src", "tests"]
 explicit_package_bases = true
-files = ["shared/src", "tests"]
+files = ["shared/src", "ml/src", "tests"]
 
 [[tool.mypy.overrides]]
 module = ["confluent_kafka", "confluent_kafka.*"]
@@ -98,7 +100,7 @@ markers = [
 filterwarnings = ["error"]
 
 [tool.coverage.run]
-source = ["shared"]
+source = ["shared", "stockml"]
 branch = true
 
 [tool.coverage.report]

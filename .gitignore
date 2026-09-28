@@ -26,8 +26,7 @@ node_modules/
 *.tsbuildinfo
 
 # --- data & ML artefacts (reproducible, never committed) ---
-data/
-!ml/data/
+/data/
 mlruns/
 mlartifacts/
 *.parquet

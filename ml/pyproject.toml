@@ -1,0 +1,24 @@
+[project]
+name = "stockintel-ml"
+version = "0.1.0"
+description = "Offline data + ML pipeline: dataset acquisition, validation, features, training, evaluation"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared",
+    "numpy>=2.1",
+    "pandas>=2.2",
+]
+
+[project.scripts]
+sip-acquire = "stockml.data.acquire:main"
+sip-calibrate = "stockml.data.calibrate:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stockml"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }

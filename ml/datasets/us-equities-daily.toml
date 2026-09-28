@@ -1,0 +1,20 @@
+# Default training dataset. See docs/DATA_PIPELINE.md for provenance and caveats.
+name = "us-equities-daily"
+description = "Daily OHLCV bars for 12 large-cap US equities across sectors"
+provider = "huggingface"
+repo_id = "AYUSHKHAIRE/all-stock-market-data-daily-updates"
+# Pinned commit: the upstream repo is re-uploaded daily, so "main" is not
+# reproducible. Bump deliberately (make data-update-lock) and re-verify.
+revision = "5ee174781f6592de213df233339fcacb118dc492"
+license = "CC0-1.0"
+frequency = "1d"
+# Files are sharded by the symbol's first character.
+path_template = "{shard}/{symbol}.csv"
+symbols = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META",  # technology / communication
+    "JPM",                                            # financials
+    "XOM",                                            # energy
+    "JNJ",                                            # health care
+    "WMT", "PG",                                      # consumer staples
+    "TSLA",                                           # consumer discretionary, high volatility
+]

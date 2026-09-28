@@ -144,10 +144,11 @@ make help              # all targets
 - [Kafka design](docs/KAFKA_DESIGN.md): topics, partitioning, delivery
   semantics, DLQ, backpressure, shutdown
 - [Data model](docs/DATA_MODEL.md): storage responsibilities, ER diagram, indexes
+- [Data pipeline](docs/DATA_PIPELINE.md): training dataset, provenance, acquisition, calibration
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
-Planned: `DATA_PIPELINE.md`, `ML_PIPELINE.md`, `PERFORMANCE.md` (with measured
+Planned: `ML_PIPELINE.md`, `PERFORMANCE.md` (with measured
 results only), `DEPLOYMENT.md`.
 
 ## Known limitations (current)

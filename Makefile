@@ -64,6 +64,17 @@ kafka-ui: ## Start Kafka UI on http://localhost:8081
 $(ENV_FILE):
 	@echo "missing $(ENV_FILE): run 'make env' first" && exit 1
 
+# --- data -------------------------------------------------------------------
+.PHONY: data data-update-lock calibrate
+data: ## Download + verify the pinned historical dataset into data/raw (read-only)
+	$(UV) run --frozen python -m stockml.data.acquire
+
+data-update-lock: ## Re-record dataset checksums after deliberately bumping the revision
+	$(UV) run --frozen python -m stockml.data.acquire --update-lock
+
+calibrate: data ## Re-estimate simulator parameters from the historical snapshot
+	$(UV) run --frozen python -m stockml.data.calibrate
+
 # --- quality ------------------------------------------------------------------
 .PHONY: fmt lint typecheck test test-integration cov check
 fmt: ## Auto-format and fix lint

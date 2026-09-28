@@ -1,0 +1,141 @@
+{
+  "dataset": "us-equities-daily",
+  "revision": "5ee174781f6592de213df233339fcacb118dc492",
+  "frequency": "1d",
+  "lookback_trading_days": 756,
+  "method": "GBM moments of daily log returns; volume in log space",
+  "symbols": {
+    "AAPL": {
+      "last_close": 341.07,
+      "mu_annual": 0.256962,
+      "sigma_annual": 0.266308,
+      "median_daily_volume": 48220400,
+      "log_volume_std": 0.343972,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "MSFT": {
+      "last_close": 516.17,
+      "mu_annual": 0.192476,
+      "sigma_annual": 0.260405,
+      "median_daily_volume": 21652800,
+      "log_volume_std": 0.386937,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "GOOGL": {
+      "last_close": 343.92,
+      "mu_annual": 0.361635,
+      "sigma_annual": 0.305935,
+      "median_daily_volume": 28013200,
+      "log_volume_std": 0.367689,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "AMZN": {
+      "last_close": 249.67,
+      "mu_annual": 0.255548,
+      "sigma_annual": 0.320339,
+      "median_daily_volume": 40548600,
+      "log_volume_std": 0.350003,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "NVDA": {
+      "last_close": 225.07,
+      "mu_annual": 0.666581,
+      "sigma_annual": 0.466673,
+      "median_daily_volume": 225578800,
+      "log_volume_std": 0.509012,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "META": {
+      "last_close": 751.66,
+      "mu_annual": 0.377921,
+      "sigma_annual": 0.377855,
+      "median_daily_volume": 13964800,
+      "log_volume_std": 0.410421,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "JPM": {
+      "last_close": 343.06,
+      "mu_annual": 0.306318,
+      "sigma_annual": 0.231352,
+      "median_daily_volume": 8328500,
+      "log_volume_std": 0.334943,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "XOM": {
+      "last_close": 160.59,
+      "mu_annual": 0.135138,
+      "sigma_annual": 0.236067,
+      "median_daily_volume": 15808500,
+      "log_volume_std": 0.31052,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "JNJ": {
+      "last_close": 271.22,
+      "mu_annual": 0.186047,
+      "sigma_annual": 0.179646,
+      "median_daily_volume": 7329200,
+      "log_volume_std": 0.315827,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "WMT": {
+      "last_close": 107.98,
+      "mu_annual": 0.253828,
+      "sigma_annual": 0.231292,
+      "median_daily_volume": 17068600,
+      "log_volume_std": 0.403501,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "PG": {
+      "last_close": 146.23,
+      "mu_annual": -0.000126,
+      "sigma_annual": 0.178786,
+      "median_daily_volume": 7207500,
+      "log_volume_std": 0.345846,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    },
+    "TSLA": {
+      "last_close": 372.11,
+      "mu_annual": 0.282351,
+      "sigma_annual": 0.576459,
+      "median_daily_volume": 82950100,
+      "log_volume_std": 0.423865,
+      "window_start": "2023-09-20",
+      "window_end": "2026-09-25",
+      "observations": 756,
+      "dropped_rows": 0
+    }
+  }
+}
