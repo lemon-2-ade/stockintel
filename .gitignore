@@ -1,0 +1,42 @@
+# --- secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# --- node / frontend ---
+node_modules/
+.vite/
+*.tsbuildinfo
+
+# --- data & ML artefacts (reproducible, never committed) ---
+data/
+!ml/data/
+mlruns/
+mlartifacts/
+*.parquet
+*.joblib
+*.pkl
+
+# --- editors / OS ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+.directory

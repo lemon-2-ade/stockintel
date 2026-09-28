@@ -1,0 +1,106 @@
+[project]
+name = "stock-intelligence-platform"
+version = "0.1.0"
+description = "Real-Time Stock Intelligence & Prediction Platform (workspace root)"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+# The root is a virtual workspace: it installs nothing itself, it only pins the
+# members and the shared developer tool-chain. Each service declares its own
+# runtime dependencies so its Docker image stays small.
+dependencies = ["stockintel-shared[kafka,db]"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "pre-commit>=4.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["shared"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }
+
+# --------------------------------------------------------------------------- #
+# Ruff                                                                         #
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # bugbear
+    "UP",       # pyupgrade
+    "SIM",      # simplify
+    "N",        # naming
+    "S",        # bandit (security)
+    "RUF",
+    "PT",       # pytest style
+    "DTZ",      # timezone-naive datetimes are a classic market-data bug
+    "PL",       # pylint subset
+]
+ignore = [
+    "PLR0913",  # many-args is normal for data models / constructors
+    "PLR2004",  # magic values are fine in tests and thresholds
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "PLR2004", "S311"]
+"tests/**" = ["S101", "PLR2004", "S311"]
+"**/migrations/versions/*.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["shared"]
+
+# --------------------------------------------------------------------------- #
+# Mypy                                                                         #
+# --------------------------------------------------------------------------- #
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+mypy_path = ["shared/src", "tests"]
+explicit_package_bases = true
+files = ["shared/src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["confluent_kafka", "confluent_kafka.*"]
+# confluent-kafka ships stubs but re-exports its admin classes implicitly.
+implicit_reexport = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# --------------------------------------------------------------------------- #
+# Pytest                                                                       #
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib -m \"not integration\""
+pythonpath = ["tests"]
+markers = [
+    "integration: needs live infrastructure (Kafka/Postgres/Redis); run with `make test-integration`",
+]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["shared"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

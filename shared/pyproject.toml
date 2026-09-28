@@ -1,0 +1,30 @@
+[project]
+name = "stockintel-shared"
+version = "0.1.0"
+description = "Shared contracts (event schemas, Kafka topology, DB models) for the Stock Intelligence Platform"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+# Kept optional so e.g. the frontend build or a pure-ML job never pulls librdkafka.
+kafka = ["confluent-kafka>=2.6,<3"]
+db = [
+    "sqlalchemy>=2.0.36,<3",
+    "psycopg[binary]>=3.2,<4",
+    "alembic>=1.14,<2",
+]
+
+[project.scripts]
+sip-provision-topics = "shared.kafka.provision:main"
+sip-migrate = "shared.db.migrate:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shared"]
