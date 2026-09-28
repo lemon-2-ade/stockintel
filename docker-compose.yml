@@ -1,0 +1,243 @@
+# ============================================================================
+# Stock Intelligence Platform - local development stack
+#
+#   make env && make dev        # build + start infrastructure, migrate, provision
+#   make down / make clean      # stop / stop and delete volumes
+#
+# Every host port binds to 127.0.0.1 only: nothing here is hardened for a
+# shared network. Secrets come from .env (see .env.example) and compose fails
+# fast (`:?`) when one is missing instead of starting with an empty password.
+# Application services (producer, stream processor, API, inference, frontend)
+# are added to this file in the phase that implements them.
+# ============================================================================
+name: stockintel
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-platform-tools: &platform-tools
+  image: stockintel/platform-tools:dev
+  build:
+    context: .
+    dockerfile: infrastructure/docker/platform-tools.Dockerfile
+  logging: *logging
+  restart: "no"
+  environment:
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    KAFKA_TOPIC_REPLICATION_FACTOR: ${KAFKA_TOPIC_REPLICATION_FACTOR:-1}
+    KAFKA_TOPIC_MIN_INSYNC_REPLICAS: ${KAFKA_TOPIC_MIN_INSYNC_REPLICAS:-1}
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: ${POSTGRES_DB:-stockintel}
+    POSTGRES_USER: ${POSTGRES_USER:-stockintel}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    LOG_FORMAT: ${LOG_FORMAT:-json}
+
+services:
+  # --------------------------------------------------------------------------
+  # Event backbone: single-node KRaft broker (no ZooKeeper).
+  # PLAINTEXT://kafka:9092  -> containers      EXTERNAL://localhost:9094 -> host
+  # --------------------------------------------------------------------------
+  kafka:
+    image: apache/kafka:4.0.0
+    hostname: kafka
+    environment:
+      CLUSTER_ID: "c3RvY2tpbnRlbC1sb2NhbA"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Topics are created only by `kafka-init` from shared/kafka/topics.py.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:9094:9094"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    logging: *logging
+    restart: unless-stopped
+
+  kafka-init:
+    <<: *platform-tools
+    command: ["python", "-m", "shared.kafka.provision"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # --------------------------------------------------------------------------
+  # System of record + MLflow backend store (separate database & role).
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stockintel}
+      POSTGRES_USER: ${POSTGRES_USER:-stockintel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:?set MLFLOW_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    logging: *logging
+    restart: unless-stopped
+
+  db-migrate:
+    <<: *platform-tools
+    command: ["python", "-m", "shared.db.migrate", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # --------------------------------------------------------------------------
+  # Hot state cache. Deliberately non-durable (no RDB/AOF): everything in it is
+  # re-derivable from Kafka/Postgres, and LRU eviction bounds memory.
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server
+        --requirepass "$${REDIS_PASSWORD}"
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --save ""
+        --appendonly no
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Experiment tracking + model registry. Artifacts are proxied by the server
+  # (--serve-artifacts) so clients never need filesystem/S3 credentials.
+  # --------------------------------------------------------------------------
+  mlflow:
+    image: stockintel/mlflow:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/mlflow.Dockerfile
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql+psycopg2://mlflow:${MLFLOW_DB_PASSWORD:?set MLFLOW_DB_PASSWORD in .env}@postgres:5432/mlflow
+      MLFLOW_ARTIFACTS_DESTINATION: /mlflow/artifacts
+      MLFLOW_WORKERS: "2"
+      MLFLOW_SERVER_ALLOWED_HOSTS: "localhost:*,127.0.0.1:*,mlflow:*"
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - mlflow-artifacts:/mlflow/artifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(urllib.request.urlopen('http://localhost:5000/health', timeout=3).status != 200)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    logging: *logging
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Observability
+  # --------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./infrastructure/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Optional developer tooling: `docker compose --profile tools up -d kafka-ui`
+  # --------------------------------------------------------------------------
+  kafka-ui:
+    image: kafbat/kafka-ui:v1.2.0
+    profiles: ["tools"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  kafka-data:
+  postgres-data:
+  mlflow-artifacts:
+  prometheus-data:
+  grafana-data:

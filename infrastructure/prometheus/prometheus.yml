@@ -1,0 +1,14 @@
+# Prometheus scrape configuration.
+# Application services register their /metrics targets here as they are added
+# (Phase 2+); Phase 11 adds recording rules, alerts and Kafka lag exporting.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    platform: stockintel
+    env: local
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
