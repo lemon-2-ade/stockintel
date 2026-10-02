@@ -23,3 +23,7 @@ scrape_configs:
       - names: ["stream-processor"]
         type: A
         port: 8002
+
+  - job_name: sinks
+    static_configs:
+      - targets: ["sink-postgres:8003", "sink-redis:8003"]

@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 import threading
-from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
 from factories import make_bar
-from kafka_fakes import FakeProducer
+from kafka_fakes import TP, FakeConsumer, FakeProducer, Msg
 from prometheus_client import CollectorRegistry
 
 from shared.kafka.serde import JsonEventSerde
@@ -19,72 +18,6 @@ from stream_processor.processor import BarProcessor
 
 T0 = datetime(2026, 1, 5, 14, 30, tzinfo=UTC)
 serde = JsonEventSerde()
-
-
-@dataclass
-class Msg:
-    _value: bytes | None
-    _offset: int
-    _partition: int = 0
-    _topic: str = "market.raw"
-    _key: bytes | None = b"AAPL"
-    _headers: list[tuple[str, bytes]] = field(default_factory=list)
-    _error: Any = None
-
-    def error(self) -> Any:
-        return self._error
-
-    def topic(self) -> str:
-        return self._topic
-
-    def partition(self) -> int:
-        return self._partition
-
-    def offset(self) -> int:
-        return self._offset
-
-    def key(self) -> bytes | None:
-        return self._key
-
-    def value(self) -> bytes | None:
-        return self._value
-
-    def headers(self) -> list[tuple[str, bytes]]:
-        return self._headers
-
-
-@dataclass
-class TP:
-    topic: str
-    partition: int
-    offset: int = -1001
-
-
-class FakeConsumer:
-    def __init__(self, committed: dict[int, int] | None = None, low: int = 0) -> None:
-        self.stored: list[tuple[int, int]] = []
-        self.assigned: list[TP] = []
-        self._committed = committed or {}
-        self._low = low
-
-    def store_offsets(self, message: Msg) -> None:
-        self.stored.append((message.partition(), message.offset()))
-
-    def committed(self, partitions: list[TP], timeout: float) -> list[TP]:
-        return [
-            TP(p.topic, p.partition, self._committed.get(p.partition, -1001)) for p in partitions
-        ]
-
-    def get_watermark_offsets(
-        self, tp: TP, timeout: float = 0, cached: bool = False
-    ) -> tuple[int, int]:
-        return self._low, 10_000
-
-    def incremental_assign(self, partitions: list[TP]) -> None:
-        self.assigned = partitions
-
-    def commit(self, asynchronous: bool = False) -> None:
-        pass
 
 
 def bar_msg(i: int, offset: int, close: float = 100.0, **kw: Any) -> Msg:

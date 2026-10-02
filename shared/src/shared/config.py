@@ -66,6 +66,19 @@ class RedisSettings(BaseSettings):
     port: int = 6379
     db: int = Field(default=0, ge=0)
     password: SecretStr | None = None
+    socket_timeout_s: float = Field(default=2.0, gt=0)
+
+    def client_kwargs(self) -> dict[str, object]:
+        """Keyword arguments for ``redis.Redis`` / ``redis.asyncio.Redis``."""
+        return {
+            "host": self.host,
+            "port": self.port,
+            "db": self.db,
+            "password": self.password.get_secret_value() if self.password else None,
+            "socket_timeout": self.socket_timeout_s,
+            "socket_connect_timeout": self.socket_timeout_s,
+            "decode_responses": True,
+        }
 
 
 class LogSettings(BaseSettings):

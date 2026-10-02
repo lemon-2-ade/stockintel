@@ -12,6 +12,7 @@ dependencies = [
     "stockintel-ml",
     "stockintel-market-producer",
     "stockintel-stream-processor",
+    "stockintel-sinks",
 ]
 
 [dependency-groups]
@@ -28,13 +29,14 @@ dev = [
 package = false
 
 [tool.uv.workspace]
-members = ["shared", "ml", "services/market-producer", "services/stream-processor"]
+members = ["shared", "ml", "services/market-producer", "services/stream-processor", "services/sinks"]
 
 [tool.uv.sources]
 stockintel-shared = { workspace = true }
 stockintel-ml = { workspace = true }
 stockintel-market-producer = { workspace = true }
 stockintel-stream-processor = { workspace = true }
+stockintel-sinks = { workspace = true }
 
 # --------------------------------------------------------------------------- #
 # Ruff                                                                         #
@@ -69,7 +71,7 @@ ignore = [
 "**/migrations/versions/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["shared", "stockml", "market_producer", "stream_processor"]
+known-first-party = ["shared", "stockml", "market_producer", "stream_processor", "sinks"]
 
 # --------------------------------------------------------------------------- #
 # Mypy                                                                         #
@@ -79,13 +81,21 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
-mypy_path = ["shared/src", "ml/src", "services/market-producer/src", "services/stream-processor/src", "tests"]
+mypy_path = [
+    "shared/src",
+    "ml/src",
+    "services/market-producer/src",
+    "services/stream-processor/src",
+    "services/sinks/src",
+    "tests",
+]
 explicit_package_bases = true
 files = [
     "shared/src",
     "ml/src",
     "services/market-producer/src",
     "services/stream-processor/src",
+    "services/sinks/src",
     "scripts",
     "tests",
 ]
@@ -114,7 +124,7 @@ markers = [
 filterwarnings = ["error"]
 
 [tool.coverage.run]
-source = ["shared", "stockml", "market_producer", "stream_processor"]
+source = ["shared", "stockml", "market_producer", "stream_processor", "sinks"]
 branch = true
 
 [tool.coverage.report]

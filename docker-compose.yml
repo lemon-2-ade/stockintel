@@ -294,6 +294,63 @@ services:
     logging: *logging
     restart: unless-stopped
 
+  # Two consumer groups, one image: Postgres (system of record) and Redis
+  # (latest state + live fan-out). Separate groups -> a slow DB never delays
+  # the dashboard, and each sink can be rebuilt by replaying from Kafka.
+  sink-postgres:
+    image: stockintel/sinks:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/python-service.Dockerfile
+      args:
+        PACKAGE: stockintel-sinks
+    command: ["python", "-m", "sinks.main", "postgres"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-stockintel}
+      POSTGRES_USER: ${POSTGRES_USER:-stockintel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      SINK_METRICS_PORT: "8003"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      db-migrate:
+        condition: service_completed_successfully
+    healthcheck: &sink-health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/metrics', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 20s
+    logging: *logging
+    restart: unless-stopped
+
+  sink-redis:
+    image: stockintel/sinks:dev
+    command: ["python", "-m", "sinks.main", "redis"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      SINK_METRICS_PORT: "8003"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      sink-postgres:
+        condition: service_started  # shares the image built by sink-postgres
+    healthcheck: *sink-health
+    stop_grace_period: 20s
+    logging: *logging
+    restart: unless-stopped
+
   # --------------------------------------------------------------------------
   # Optional developer tooling: `docker compose --profile tools up -d kafka-ui`
   # --------------------------------------------------------------------------

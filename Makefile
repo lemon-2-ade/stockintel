@@ -12,7 +12,7 @@ ENV_FILE := .env
 UV_RUN := $(UV) run --frozen $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 
 INFRA_SERVICES := kafka postgres redis mlflow prometheus grafana
-APP_SERVICES := market-producer stream-processor
+APP_SERVICES := market-producer stream-processor sink-postgres sink-redis
 
 .PHONY: help
 help: ## Show this help

@@ -1,0 +1,23 @@
+[project]
+name = "stockintel-sinks"
+version = "0.1.0"
+description = "Kafka sinks: idempotent PostgreSQL persistence and Redis latest-state cache"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared[kafka,db]",
+    "redis>=5.2",
+    "prometheus-client>=0.21",
+]
+
+[project.scripts]
+stockintel-sink = "sinks.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sinks"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }
