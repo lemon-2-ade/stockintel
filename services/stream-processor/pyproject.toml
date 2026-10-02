@@ -1,0 +1,22 @@
+[project]
+name = "stockintel-stream-processor"
+version = "0.1.0"
+description = "Stream processor: market.raw -> indicators (market.enriched) + anomalies (market.anomalies)"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared[kafka]",
+    "prometheus-client>=0.21",
+]
+
+[project.scripts]
+stream-processor = "stream_processor.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stream_processor"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }

@@ -20,7 +20,7 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime
 from typing import Annotated
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import (
     AfterValidator,
@@ -32,6 +32,19 @@ from pydantic import (
 )
 
 SYMBOL_PATTERN = r"^[A-Z][A-Z0-9.\-]{0,14}$"
+
+
+_DERIVED_NAMESPACE = uuid5(NAMESPACE_URL, "https://stockintel.local/derived-events")
+
+
+def derived_event_id(source_event_id: UUID, *parts: str) -> UUID:
+    """Deterministic id for an event derived from another one.
+
+    Re-processing the same input (Kafka redelivery, replay after a crash)
+    yields the same id, so downstream consumers can de-duplicate by
+    ``event_id`` instead of seeing a "new" event each time.
+    """
+    return uuid5(_DERIVED_NAMESPACE, ":".join([str(source_event_id), *parts]))
 
 
 def utcnow() -> datetime:

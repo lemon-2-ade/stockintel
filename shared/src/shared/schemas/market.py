@@ -18,6 +18,7 @@ from shared.schemas.base import (
     Price,
     Symbol,
     UtcDatetime,
+    derived_event_id,
 )
 
 
@@ -154,8 +155,13 @@ class EnrichedBarEvent(BaseEvent, OHLCVFields):
         source: str,
         processing_latency_ms: float | None = None,
     ) -> EnrichedBarEvent:
-        """Derive an enriched event, carrying over OHLCV and the trace id."""
+        """Derive an enriched event, carrying over OHLCV and the trace id.
+
+        The event id is derived from the raw event id and indicator version, so
+        re-processing the same bar produces the same enriched event id.
+        """
         return cls(
+            event_id=derived_event_id(bar.event_id, "enriched", indicator_version),
             source=source,
             trace_id=bar.trace_id,
             **bar.model_dump(include=set(OHLCVFields.model_fields)),

@@ -104,6 +104,10 @@ def test_enriched_event_allows_unwarmed_indicators(make_bar: BarFactory) -> None
     assert enriched.event_type == "market.enriched"
     assert enriched.source_event_id == raw.event_id
     assert enriched.event_id != raw.event_id
+    again = EnrichedBarEvent.from_bar(
+        raw, indicators=IndicatorSnapshot(), indicator_version="1.0.0", source="other"
+    )
+    assert again.event_id == enriched.event_id, "re-processing yields the same event id"
     assert enriched.trace_id == "trace-1"
     assert (enriched.open, enriched.close, enriched.volume) == (raw.open, raw.close, raw.volume)
 

@@ -13,6 +13,7 @@ members = [
     "stockintel-market-producer",
     "stockintel-ml",
     "stockintel-shared",
+    "stockintel-stream-processor",
 ]
 
 [[package]]
@@ -759,6 +760,7 @@ dependencies = [
     { name = "stockintel-market-producer" },
     { name = "stockintel-ml" },
     { name = "stockintel-shared", extra = ["db", "kafka"] },
+    { name = "stockintel-stream-processor" },
 ]
 
 [package.dev-dependencies]
@@ -776,6 +778,7 @@ requires-dist = [
     { name = "stockintel-market-producer", editable = "services/market-producer" },
     { name = "stockintel-ml", editable = "ml" },
     { name = "stockintel-shared", extras = ["kafka", "db"], editable = "shared" },
+    { name = "stockintel-stream-processor", editable = "services/stream-processor" },
 ]
 
 [package.metadata.requires-dev]
@@ -853,6 +856,21 @@ requires-dist = [
     { name = "structlog", specifier = ">=24.4" },
 ]
 provides-extras = ["kafka", "db"]
+
+[[package]]
+name = "stockintel-stream-processor"
+version = "0.1.0"
+source = { editable = "services/stream-processor" }
+dependencies = [
+    { name = "prometheus-client" },
+    { name = "stockintel-shared", extra = ["kafka"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "prometheus-client", specifier = ">=0.21" },
+    { name = "stockintel-shared", extras = ["kafka"], editable = "shared" },
+]
 
 [[package]]
 name = "structlog"
