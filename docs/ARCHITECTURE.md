@@ -130,6 +130,12 @@ Further decisions recorded here (short enough not to need an ADR):
 - **Bar semantics.** `timestamp` is the bar *open* time (event time) in UTC;
   a bar covers `[timestamp, timestamp + interval)` and is published only once
   closed. Partial/in-progress bars are out of scope for v1.
+- **React + TypeScript on Vite, not Next.js.** The dashboard is a
+  client-side, real-time view behind authentication-free local APIs: no SEO,
+  no server-rendered pages, no need for a Node server between the browser and
+  FastAPI. A Vite SPA builds to static files served from a CDN or nginx, and
+  keeps the backend boundary simple (REST + WebSocket to FastAPI only).
+  Next.js would earn its place if public, SEO-relevant pages were added.
 - **WebSocket over SSE** for the dashboard: the client changes its symbol
   subscriptions at runtime, which fits a bidirectional channel. The server
   throttles to a bounded update rate per connection and fans out across API

@@ -10,8 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 2 of 14 complete** (architecture, contracts,
-> infrastructure, training dataset, market simulator and Kafka producer). See the [roadmap](docs/ROADMAP.md). This README is extended
+> **Project status: Phase 3 of 14 complete** (architecture, contracts,
+> infrastructure, training dataset, market simulator, Kafka producer and
+> stream processing with anomaly detection). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -38,7 +39,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-2)
+## What is in place (Phases 1-3)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -68,6 +69,12 @@ Full diagrams, component responsibilities and design decisions:
   replay mode; idempotent Kafka publishing with delivery accounting, bounded
   backpressure, Prometheus metrics and graceful shutdown
   ([details](docs/MARKET_PRODUCER.md)).
+- **Stream processor** (`services/stream-processor`): incremental SMA, EMA,
+  MACD, RSI, Bollinger Bands, volatility and volume indicators (checked
+  against pandas), rule-based price/volume anomaly detection, explicit
+  duplicate/late/gap policy, dead-letter routing, commit-after-ack
+  at-least-once processing and state rebuilt by Kafka replay after restarts
+  ([details](docs/STREAM_PROCESSING.md)).
 - **Engineering baseline**: uv workspace + lockfile, ruff, mypy `--strict`,
   pytest with unit/integration split, pre-commit (incl. secret scanning),
   structured JSON logging with secret redaction, bounded retries with jitter.
@@ -82,7 +89,7 @@ Full diagrams, component responsibilities and design decisions:
 | Hot state | Redis | O(1) latest-value reads, pub/sub fan-out; never the source of truth |
 | API (planned) | FastAPI, WebSockets | async I/O, typed contracts, OpenAPI |
 | ML (planned) | pandas, NumPy, scikit-learn, LightGBM/XGBoost, MLflow, Evidently-style drift metrics | tabular GBMs are the strong baseline for engineered features; MLflow for tracking + registry |
-| Frontend (planned) | React, TypeScript, Tailwind, TradingView Lightweight Charts | financial charting primitives, canvas performance |
+| Frontend (planned) | React + TypeScript (Vite SPA, not Next.js), Tailwind, TradingView Lightweight Charts | financial charting primitives, canvas performance |
 | Observability | Prometheus, Grafana, structlog JSON logs | metrics + dashboards as code |
 | Tooling | uv workspace, ruff, mypy strict, pytest, pre-commit, Docker, GitHub Actions (planned) | fast, reproducible, one lockfile ([ADR 0005](docs/adr/0005-monorepo-uv-workspace.md)) |
 
@@ -91,7 +98,8 @@ Full diagrams, component responsibilities and design decisions:
 ```
 .
 ├── services/
-│   └── market-producer/     # simulator + replay providers -> market.raw
+│   ├── market-producer/     # simulator + replay providers -> market.raw
+│   └── stream-processor/    # indicators + anomaly detection -> market.enriched / anomalies
 ├── ml/                      # stockml: dataset acquisition, calibration (later: features, training)
 │   └── datasets/            # pinned dataset specs + checksum lock files
 ├── shared/                  # stockintel-shared: contracts used by every service
@@ -115,9 +123,9 @@ Full diagrams, component responsibilities and design decisions:
 └── .env.example
 ```
 
-Planned additions, each in the phase that implements it: `services/stream-processor`, `services/model-monitor`, `apps/api`,
+Planned additions, each in the phase that implements it: `services/model-monitor`, `apps/api`,
 `apps/inference`, `apps/frontend`, `ml` features/training/evaluation,
-`infrastructure/terraform`, `scripts/`, `.github/workflows/`.
+`infrastructure/terraform`, `.github/workflows/`.
 
 ## Getting started
 
@@ -131,6 +139,7 @@ make data         # download + verify the historical training dataset (~4.5 MB)
 make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
 make tail-raw     # peek at live events on market.raw
+make tail-anomalies   # detected anomalies as they happen
 ```
 
 | Service | URL |
@@ -161,6 +170,7 @@ make help              # all targets
 - [Data model](docs/DATA_MODEL.md): storage responsibilities, ER diagram, indexes
 - [Data pipeline](docs/DATA_PIPELINE.md): training dataset, provenance, acquisition, calibration
 - [Market producer](docs/MARKET_PRODUCER.md): simulator model, anomalies, replay, delivery
+- [Stream processing](docs/STREAM_PROCESSING.md): indicators, event-time policy, recovery, detector results
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
