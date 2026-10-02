@@ -23,7 +23,7 @@ from market_producer.simulator import AnomalyConfig, MarketSimulator, SymbolSimu
 from shared.config import KafkaSettings, LogSettings
 from shared.kafka.client_config import producer_config
 from shared.kafka.serde import JsonEventSerde
-from shared.observability.logs import configure_logging, get_logger
+from shared.observability.logs import configure_logging, get_logger, kafka_error_logger
 
 log = get_logger(__name__)
 
@@ -101,9 +101,7 @@ def main() -> int:
 
     from confluent_kafka import Producer  # noqa: PLC0415 - keep import cost off tests
 
-    def _on_error(err: object) -> None:
-        log.error("kafka.client_error", error=str(err))
-
+    _on_error = kafka_error_logger(log)
     producer = Producer(producer_config(kafka, client_id=settings.client_id, error_cb=_on_error))
     publisher = KafkaMarketPublisher(
         producer, topic=settings.topic, serde=JsonEventSerde(), metrics=metrics

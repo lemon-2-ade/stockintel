@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import logging
 import sys
-from collections.abc import MutableMapping
+import time
+from collections.abc import Callable, MutableMapping
 from typing import Any
 
 import structlog
@@ -79,3 +80,45 @@ def configure_logging(service: str, *, level: str = "INFO", fmt: str = "json") -
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     logger: structlog.stdlib.BoundLogger = structlog.get_logger(name)
     return logger
+
+
+class LogThrottle:
+    """Allow one log line per key per ``interval_s``; report how many were suppressed.
+
+    librdkafka reports the same connectivity error on every reconnect attempt
+    (dozens per second while a broker is down). Logging each one buries
+    everything else; logging none hides the outage.
+    """
+
+    def __init__(
+        self, interval_s: float = 30.0, clock: Callable[[], float] = time.monotonic
+    ) -> None:
+        self._interval_s = interval_s
+        self._clock = clock
+        self._last: dict[str, float] = {}
+        self._suppressed: dict[str, int] = {}
+
+    def allow(self, key: str) -> int | None:
+        """Return the number of suppressed occurrences if this one may be logged, else None."""
+        now = self._clock()
+        last = self._last.get(key)
+        if last is not None and now - last < self._interval_s:
+            self._suppressed[key] = self._suppressed.get(key, 0) + 1
+            return None
+        self._last[key] = now
+        return self._suppressed.pop(key, 0)
+
+
+def kafka_error_logger(
+    logger: structlog.stdlib.BoundLogger, interval_s: float = 30.0
+) -> Callable[[Any], None]:
+    """A librdkafka ``error_cb`` that logs each distinct error at most every ``interval_s``."""
+    throttle = LogThrottle(interval_s)
+
+    def _on_error(err: Any) -> None:
+        code = err.name() if hasattr(err, "name") else str(err)
+        suppressed = throttle.allow(str(code))
+        if suppressed is not None:
+            logger.error("kafka.client_error", error=str(err), suppressed_since_last=suppressed)
+
+    return _on_error

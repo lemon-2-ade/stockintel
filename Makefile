@@ -12,7 +12,7 @@ ENV_FILE := .env
 UV_RUN := $(UV) run --frozen $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 
 INFRA_SERVICES := kafka postgres redis mlflow prometheus grafana
-APP_SERVICES := market-producer
+APP_SERVICES := market-producer stream-processor
 
 .PHONY: help
 help: ## Show this help
@@ -29,7 +29,7 @@ env: ## Create .env from .env.example (never overwrites)
 	else cp .env.example $(ENV_FILE) && echo "created $(ENV_FILE) - change the passwords"; fi
 
 # --- local stack --------------------------------------------------------------
-.PHONY: dev infra-up down clean ps logs compose-config topics migrate kafka-ui tail-raw
+.PHONY: dev infra-up down clean ps logs compose-config topics migrate kafka-ui tail-raw tail-anomalies evaluate-detectors
 dev: infra-up ## Start the full local stack: infrastructure + application services
 	$(COMPOSE) up -d --build --wait $(APP_SERVICES)
 
@@ -64,6 +64,13 @@ tail-raw: ## Print the next 5 events on market.raw (sanity check)
 	$(COMPOSE) exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
 		--bootstrap-server localhost:9092 --topic market.raw --max-messages 5 \
 		--property print.key=true --property print.headers=true
+
+tail-anomalies: ## Print the next 5 detected anomalies
+	$(COMPOSE) exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
+		--bootstrap-server localhost:9092 --topic market.anomalies --max-messages 5
+
+evaluate-detectors: ## Score anomaly detectors on simulated data (precision/recall)
+	$(UV) run --frozen python scripts/evaluate_detectors.py
 
 kafka-ui: ## Start Kafka UI on http://localhost:8081
 	$(COMPOSE) --profile tools up -d kafka-ui

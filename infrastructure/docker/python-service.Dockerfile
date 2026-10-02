@@ -31,6 +31,7 @@ COPY pyproject.toml uv.lock ./
 COPY shared/pyproject.toml shared/pyproject.toml
 COPY ml/pyproject.toml ml/pyproject.toml
 COPY services/market-producer/pyproject.toml services/market-producer/pyproject.toml
+COPY services/stream-processor/pyproject.toml services/stream-processor/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     test -n "${PACKAGE}" && \
     uv sync --frozen --no-dev --no-install-workspace --package "${PACKAGE}" ${UV_EXTRAS}

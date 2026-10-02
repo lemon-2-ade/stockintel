@@ -81,7 +81,14 @@ warn_unreachable = true
 plugins = ["pydantic.mypy"]
 mypy_path = ["shared/src", "ml/src", "services/market-producer/src", "services/stream-processor/src", "tests"]
 explicit_package_bases = true
-files = ["shared/src", "ml/src", "services/market-producer/src", "services/stream-processor/src", "tests"]
+files = [
+    "shared/src",
+    "ml/src",
+    "services/market-producer/src",
+    "services/stream-processor/src",
+    "scripts",
+    "tests",
+]
 
 [[tool.mypy.overrides]]
 module = ["confluent_kafka", "confluent_kafka.*"]

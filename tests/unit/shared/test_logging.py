@@ -4,7 +4,13 @@ import json
 
 import pytest
 
-from shared.observability.logs import REDACTED, configure_logging, get_logger, redact_secrets
+from shared.observability.logs import (
+    REDACTED,
+    LogThrottle,
+    configure_logging,
+    get_logger,
+    redact_secrets,
+)
 
 
 def test_redaction_masks_credential_like_keys() -> None:
@@ -25,3 +31,15 @@ def test_json_logs_have_service_and_context(capsys: pytest.CaptureFixture[str]) 
     assert record["level"] == "info"
     assert record["token"] == REDACTED
     assert "timestamp" in record
+
+
+def test_log_throttle_counts_suppressed_occurrences() -> None:
+    now = [0.0]
+    throttle = LogThrottle(interval_s=10, clock=lambda: now[0])
+    assert throttle.allow("down") == 0
+    assert throttle.allow("down") is None
+    assert throttle.allow("other") == 0
+    now[0] = 5
+    assert throttle.allow("down") is None
+    now[0] = 11
+    assert throttle.allow("down") == 2
