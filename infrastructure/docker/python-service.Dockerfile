@@ -33,6 +33,7 @@ COPY ml/pyproject.toml ml/pyproject.toml
 COPY services/market-producer/pyproject.toml services/market-producer/pyproject.toml
 COPY services/stream-processor/pyproject.toml services/stream-processor/pyproject.toml
 COPY services/sinks/pyproject.toml services/sinks/pyproject.toml
+COPY apps/api/pyproject.toml apps/api/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     test -n "${PACKAGE}" && \
     uv sync --frozen --no-dev --no-install-workspace --package "${PACKAGE}" ${UV_EXTRAS}
@@ -41,6 +42,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY shared/ shared/
 COPY ml/ ml/
 COPY services/ services/
+COPY apps/api/ apps/api/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package "${PACKAGE}" ${UV_EXTRAS}
 

@@ -12,7 +12,7 @@ ENV_FILE := .env
 UV_RUN := $(UV) run --frozen $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 
 INFRA_SERVICES := kafka postgres redis mlflow prometheus grafana
-APP_SERVICES := market-producer stream-processor sink-postgres sink-redis
+APP_SERVICES := market-producer stream-processor sink-postgres sink-redis api
 
 .PHONY: help
 help: ## Show this help
@@ -29,7 +29,7 @@ env: ## Create .env from .env.example (never overwrites)
 	else cp .env.example $(ENV_FILE) && echo "created $(ENV_FILE) - change the passwords"; fi
 
 # --- local stack --------------------------------------------------------------
-.PHONY: dev infra-up down clean ps logs compose-config topics migrate kafka-ui tail-raw tail-anomalies evaluate-detectors
+.PHONY: dev infra-up down clean ps logs compose-config topics migrate kafka-ui tail-raw tail-anomalies evaluate-detectors api-local
 dev: infra-up ## Start the full local stack: infrastructure + application services
 	$(COMPOSE) up -d --build --wait $(APP_SERVICES)
 
@@ -71,6 +71,9 @@ tail-anomalies: ## Print the next 5 detected anomalies
 
 evaluate-detectors: ## Score anomaly detectors on simulated data (precision/recall)
 	$(UV) run --frozen python scripts/evaluate_detectors.py
+
+api-local: ## Run the API on the host with auto-reload (needs infra-up)
+	$(UV_RUN) uvicorn api.main:create_app --factory --reload --port 8000
 
 kafka-ui: ## Start Kafka UI on http://localhost:8081
 	$(COMPOSE) --profile tools up -d kafka-ui

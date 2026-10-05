@@ -1,0 +1,26 @@
+[project]
+name = "stockintel-api"
+version = "0.1.0"
+description = "FastAPI backend: REST + WebSocket access to market data, analytics, anomalies and predictions"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared[db]",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "redis>=5.2",
+    "prometheus-client>=0.21",
+]
+
+[project.scripts]
+stockintel-api = "api.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/api"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }

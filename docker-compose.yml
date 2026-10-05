@@ -351,6 +351,43 @@ services:
     logging: *logging
     restart: unless-stopped
 
+  # Stateless: scale with `--scale api=N` behind a load balancer (Phase 13).
+  api:
+    image: stockintel/api:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/python-service.Dockerfile
+      args:
+        PACKAGE: stockintel-api
+    command: ["python", "-m", "api.main"]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-stockintel}
+      POSTGRES_USER: ${POSTGRES_USER:-stockintel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:5173}
+      API_RATE_LIMIT_PER_S: ${API_RATE_LIMIT_PER_S:-20}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    stop_grace_period: 15s
+    logging: *logging
+    restart: unless-stopped
+
   # --------------------------------------------------------------------------
   # Optional developer tooling: `docker compose --profile tools up -d kafka-ui`
   # --------------------------------------------------------------------------
