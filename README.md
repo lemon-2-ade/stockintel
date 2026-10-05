@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 3 of 14 complete** (architecture, contracts,
-> infrastructure, training dataset, market simulator, Kafka producer and
-> stream processing with anomaly detection). See the [roadmap](docs/ROADMAP.md). This README is extended
+> **Project status: Phase 4 of 14 complete** (architecture, contracts,
+> infrastructure, training dataset, market simulator, Kafka producer, stream
+> processing with anomaly detection, storage sinks and the REST/WebSocket API). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -39,7 +39,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-3)
+## What is in place (Phases 1-4)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -75,6 +75,13 @@ Full diagrams, component responsibilities and design decisions:
   duplicate/late/gap policy, dead-letter routing, commit-after-ack
   at-least-once processing and state rebuilt by Kafka replay after restarts
   ([details](docs/STREAM_PROCESSING.md)).
+- **Storage sinks + API** (`services/sinks`, `apps/api`): idempotent batched
+  Postgres persistence and an event-time-guarded Redis cache (separate
+  consumer groups); FastAPI with versioned REST endpoints, keyset pagination,
+  graceful degradation when Redis or Postgres is down, structured errors,
+  request ids, rate limiting, CORS, Prometheus metrics, and throttled
+  WebSocket live updates fanned out through Redis pub/sub
+  ([details](docs/API.md)).
 - **Engineering baseline**: uv workspace + lockfile, ruff, mypy `--strict`,
   pytest with unit/integration split, pre-commit (incl. secret scanning),
   structured JSON logging with secret redaction, bounded retries with jitter.
@@ -87,7 +94,7 @@ Full diagrams, component responsibilities and design decisions:
 | Contracts | Pydantic v2, JSON on the wire | validation + evolution now, Schema Registry-ready ([ADR 0002](docs/adr/0002-json-events-first.md)) |
 | System of record | PostgreSQL 16, SQLAlchemy 2, Alembic | relational history, joins for monitoring ([ADR 0003](docs/adr/0003-storage-by-access-pattern.md)) |
 | Hot state | Redis | O(1) latest-value reads, pub/sub fan-out; never the source of truth |
-| API (planned) | FastAPI, WebSockets | async I/O, typed contracts, OpenAPI |
+| API | FastAPI, WebSockets, Redis pub/sub | async I/O, typed contracts, OpenAPI |
 | ML (planned) | pandas, NumPy, scikit-learn, LightGBM/XGBoost, MLflow, Evidently-style drift metrics | tabular GBMs are the strong baseline for engineered features; MLflow for tracking + registry |
 | Frontend (planned) | React + TypeScript (Vite SPA, not Next.js), Tailwind, TradingView Lightweight Charts | financial charting primitives, canvas performance |
 | Observability | Prometheus, Grafana, structlog JSON logs | metrics + dashboards as code |
@@ -99,7 +106,10 @@ Full diagrams, component responsibilities and design decisions:
 .
 ├── services/
 │   ├── market-producer/     # simulator + replay providers -> market.raw
-│   └── stream-processor/    # indicators + anomaly detection -> market.enriched / anomalies
+│   ├── stream-processor/    # indicators + anomaly detection -> market.enriched / anomalies
+│   └── sinks/               # Kafka -> Postgres (history) and Redis (latest state, pub/sub)
+├── apps/
+│   └── api/                 # FastAPI REST + WebSocket
 ├── ml/                      # stockml: dataset acquisition, calibration (later: features, training)
 │   └── datasets/            # pinned dataset specs + checksum lock files
 ├── shared/                  # stockintel-shared: contracts used by every service
@@ -123,7 +133,7 @@ Full diagrams, component responsibilities and design decisions:
 └── .env.example
 ```
 
-Planned additions, each in the phase that implements it: `services/model-monitor`, `apps/api`,
+Planned additions, each in the phase that implements it: `services/model-monitor`,
 `apps/inference`, `apps/frontend`, `ml` features/training/evaluation,
 `infrastructure/terraform`, `.github/workflows/`.
 
@@ -150,6 +160,7 @@ make tail-anomalies   # detected anomalies as they happen
 | MLflow | http://localhost:5000 |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3000 |
+| API + OpenAPI docs | http://localhost:8000/docs |
 | Producer metrics | http://localhost:8001/metrics |
 | Kafka UI (`make kafka-ui`) | http://localhost:8081 |
 
@@ -171,6 +182,7 @@ make help              # all targets
 - [Data pipeline](docs/DATA_PIPELINE.md): training dataset, provenance, acquisition, calibration
 - [Market producer](docs/MARKET_PRODUCER.md): simulator model, anomalies, replay, delivery
 - [Stream processing](docs/STREAM_PROCESSING.md): indicators, event-time policy, recovery, detector results
+- [API and sinks](docs/API.md): endpoints, degradation, pagination, live updates, storage writes
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
