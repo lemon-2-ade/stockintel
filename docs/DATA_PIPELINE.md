@@ -3,15 +3,16 @@
 ```mermaid
 flowchart LR
     SRC[Hugging Face dataset<br/>pinned commit] -->|make data<br/>sha256-verified| RAW[data/raw/&lt;dataset&gt;/&lt;revision&gt;/<br/>immutable, read-only]
-    RAW -->|Phase 5| VAL[validated]
-    VAL -->|Phase 5| CLEAN[cleaned]
+    RAW -->|make data-quality| VAL[validated.parquet<br/>every row + rule codes]
+    VAL --> CLEAN[cleaned.parquet<br/>errors removed, warnings flagged]
+    VAL --> REP[quality report<br/>docs/DATA_QUALITY.md]
     CLEAN -->|Phase 6| FEAT[features]
     FEAT --> TRAIN[training dataset]
     RAW -->|make calibrate| CAL[simulator calibration<br/>market_producer/calibrations]
 ```
 
-Status: **acquisition and simulator calibration are implemented** (Phase 2).
-Validation, cleaning and feature stages follow in Phases 5-6.
+Status: acquisition and calibration (Phase 2) and **validation + cleaning
+(Phase 5)** are implemented; the feature stage follows in Phase 6.
 
 ## 1. Default dataset: `us-equities-daily`
 
@@ -109,14 +110,109 @@ error of roughly sigma/sqrt(3), i.e. about 15 percentage points for a 26%-vol
 stock), so the simulator lets it be overridden, and defaults to zero drift for
 intraday simulation where it is irrelevant anyway.
 
-## 4. Planned stages
+## 4. Validation and cleaning (`make data-quality`)
 
-- **Validation (Phase 5)**: schema and dtype checks, duplicate/missing
-  timestamps against the exchange calendar, OHLC and positivity constraints,
-  volume sanity, extreme-return flagging with market-wide cross-checks, a
-  machine-readable data-quality report.
-- **Cleaning (Phase 5)**: every rule documented; erroneous observations
-  (e.g. OHLC violations, zero prices) are removed or repaired with a reason
-  code, while legitimate extreme market events are kept and flagged.
-- **Features and splits (Phase 6)**: point-in-time features shared with the
-  online path, chronological splits with an embargo equal to the label horizon.
+`python -m stockml.data.pipeline` ([quality](../ml/src/stockml/data/quality.py),
+[cleaning](../ml/src/stockml/data/cleaning.py),
+[pipeline](../ml/src/stockml/data/pipeline.py)) re-verifies the raw files
+against the lock file, then writes to `data/processed/<dataset>/<revision>/`:
+
+| Output | Content |
+| --- | --- |
+| `validated.parquet` | every raw row: raw strings, parsed values, rule codes |
+| `cleaned.parquet` | the canonical training input |
+| `removed_rows.csv` | audit log: symbol, file line, rule codes, reason, raw values |
+| `quality_report.json` | machine-readable report, rendered to [`DATA_QUALITY.md`](DATA_QUALITY.md) |
+| `manifest.json` | input checksums, revision, config, pipeline version, output hashes |
+
+Raw files are read **as strings**, so a malformed value reaches the
+validator as a finding instead of crashing the parser.
+
+### Rules
+
+**Errors** cannot be true or cannot be used, and are removed (the reason is
+logged per row):
+
+| Code | Rule | Action |
+| --- | --- | --- |
+| E001 | missing / non-numeric price or volume | drop row |
+| E002 | timestamp missing, unparsable, before 1990 or in the future | drop row |
+| E003 | non-positive price | drop row |
+| E004 | negative volume | drop row |
+| E005 | OHLC inconsistent (`high < max(open, close, low)` or `low > min(open, close)`) | drop row |
+| E006 | several rows for one timestamp that disagree | drop **all** copies (no basis to pick one) |
+| E007 | exact repeat of an earlier row | keep the first |
+
+**Warnings** are unusual but may be real, and are kept and flagged:
+
+| Code | Rule | Flag in `cleaned.parquet` |
+| --- | --- | --- |
+| W101 | extreme move | `extreme_class` |
+| W102 | zero volume in a session | `flag_zero_volume` |
+| W103 | sessions missing before this row | `missing_sessions_before` |
+| W104 | bar does not open at 09:30 New York time | `flag_irregular_time` |
+| W105 | close unchanged ≥ 5 sessions | `flag_stale_price` |
+
+### Erroneous data vs real extreme events
+
+A crash day is not a data error, and deleting it would teach a model that
+crashes do not happen. So extreme moves are **classified, not removed**:
+
+1. **Detect**: robust z-score of the log return against the symbol's
+   *trailing* 252-day median and MAD (prior returns only, ≥ 60 required):
+   `|z| ≥ 6`. MAD rather than standard deviation, so earlier spikes do not
+   inflate the yardstick.
+2. **Classify** (first match wins):
+   - `market_wide`: at least half the symbols moved `|z| ≥ 3` that day
+     (e.g. 2011-08-08, March 2020) → real
+   - `volume_confirmed`: volume ≥ 2× the trailing 50-day median → real
+     (earnings, news)
+   - `suspect_reversal`: fully reversed the next session (≥ 80%) on
+     normal volume → the classic signature of a bad print
+   - `idiosyncratic`: none of the above → kept, worth a look
+
+`suspect_reversal` rows are kept by default too (`--drop-suspect-reversals`
+removes them for experiments): a reversal can be real, and the cost of
+silently deleting a real event is higher than flagging a bad one. The
+classification uses the *next* day, so these flags are **quality
+annotations, never model features** (that would leak the future).
+
+### Calendar, gaps and time zones
+
+There is no exchange-calendar dependency: the trading calendar is inferred as
+the **consensus** of the data (a date is a session if at least half of the
+symbols listed on that date have a bar). Market-wide closures (holidays,
+Hurricane Sandy) are therefore not gaps, while one symbol missing a day that
+others traded is. Gaps are **not imputed** (inventing prices invents
+returns); their length is recorded in `missing_sessions_before` so the
+feature stage can avoid computing returns across them.
+
+Session times are checked in New York time, so the daylight-saving shift
+between 14:30 and 13:30 UTC is correctly not flagged (tested across a DST
+switch).
+
+### Results on the pinned snapshot
+
+From [`DATA_QUALITY.md`](DATA_QUALITY.md) (generated by `make data-quality`):
+
+- 49,775 raw rows, **0 removed**, 49,775 cleaned; the consensus calendar has
+  4,208 sessions and no symbol has missing sessions.
+- 239 extreme moves flagged and kept: 104 `market_wide` (e.g. August 2011,
+  March 2020), 122 `volume_confirmed`, 13 `idiosyncratic`,
+  0 `suspect_reversal`.
+- No zero-volume days, stale prices or irregular session times.
+
+This snapshot is clean, so every rule is exercised by unit tests on
+deliberately corrupted files (one test per error rule, duplicates, gaps vs
+market closures, each extreme-move class, DST).
+
+**Reproducibility**: the same snapshot, config and pipeline version produce a
+byte-identical `cleaned.parquet` (its SHA-256 is in the manifest; a test
+re-runs the pipeline and compares). If a raw file no longer matches the lock
+file, the pipeline refuses to run.
+
+## 5. Next: features and splits (Phase 6)
+
+Point-in-time features shared with the online path, computed from
+`cleaned.parquet` without crossing recorded gaps, and chronological splits
+with an embargo equal to the label horizon.

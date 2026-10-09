@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 4 of 14 complete** (architecture, contracts,
+> **Project status: Phase 5 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks and the REST/WebSocket API). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, and historical data validation). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -39,7 +39,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-4)
+## What is in place (Phases 1-5)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -62,7 +62,10 @@ Full diagrams, component responsibilities and design decisions:
   topic provisioning; health checks; localhost-only ports; secrets from `.env`.
 - **Training dataset** (`ml/`): daily OHLCV for 12 US large caps, 2010-2026,
   from a CC0 dataset pinned to an exact commit, SHA-256-locked, stored as an
-  immutable read-only snapshot ([details](docs/DATA_PIPELINE.md)).
+  immutable read-only snapshot, then validated and cleaned by 12 documented
+  rules into a reproducible training input, with real extreme market events
+  classified and kept rather than deleted ([details](docs/DATA_PIPELINE.md),
+  [quality report](docs/DATA_QUALITY.md)).
 - **Market producer** (`services/market-producer`): a GBM simulator
   calibrated per symbol from that history, with continuous OHLC paths,
   volume/volatility coupling and labelled price/volume anomalies; a historical
@@ -146,6 +149,7 @@ Prerequisites: Docker with Compose v2, GNU Make, and
 make env          # create .env from .env.example, then edit the passwords
 make install      # Python deps + git hooks
 make data         # download + verify the historical training dataset (~4.5 MB)
+make data-quality # validate + clean it; writes data/processed and docs/DATA_QUALITY.md
 make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
 make tail-raw     # peek at live events on market.raw
