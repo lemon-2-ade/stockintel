@@ -82,12 +82,15 @@ $(ENV_FILE):
 	@echo "missing $(ENV_FILE): run 'make env' first" && exit 1
 
 # --- data -------------------------------------------------------------------
-.PHONY: data data-update-lock calibrate
+.PHONY: data data-update-lock calibrate data-quality
 data: ## Download + verify the pinned historical dataset into data/raw (read-only)
 	$(UV) run --frozen python -m stockml.data.acquire
 
 data-update-lock: ## Re-record dataset checksums after deliberately bumping the revision
 	$(UV) run --frozen python -m stockml.data.acquire --update-lock
+
+data-quality: data ## Validate + clean the snapshot -> data/processed, docs/DATA_QUALITY.md
+	$(UV) run --frozen python -m stockml.data.pipeline
 
 calibrate: data ## Re-estimate simulator parameters from the historical snapshot
 	$(UV) run --frozen python -m stockml.data.calibrate

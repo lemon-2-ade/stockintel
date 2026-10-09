@@ -7,11 +7,14 @@ dependencies = [
     "stockintel-shared",
     "numpy>=2.1",
     "pandas>=2.2",
+    "pyarrow>=17",
+    "tzdata>=2024.1",
 ]
 
 [project.scripts]
 sip-acquire = "stockml.data.acquire:main"
 sip-calibrate = "stockml.data.calibrate:main"
+sip-data-quality = "stockml.data.pipeline:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]
