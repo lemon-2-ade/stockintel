@@ -34,6 +34,7 @@ COPY services/market-producer/pyproject.toml services/market-producer/pyproject.
 COPY services/stream-processor/pyproject.toml services/stream-processor/pyproject.toml
 COPY services/sinks/pyproject.toml services/sinks/pyproject.toml
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
+COPY apps/inference/pyproject.toml apps/inference/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     test -n "${PACKAGE}" && \
     uv sync --frozen --no-dev --no-install-workspace --package "${PACKAGE}" ${UV_EXTRAS}
@@ -43,11 +44,18 @@ COPY shared/ shared/
 COPY ml/ ml/
 COPY services/ services/
 COPY apps/api/ apps/api/
+COPY apps/inference/ apps/inference/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package "${PACKAGE}" ${UV_EXTRAS}
 
 FROM ${PYTHON_IMAGE} AS runtime
 ARG PACKAGE
+# Shared libraries some wheels need at runtime (e.g. libgomp1 for LightGBM).
+ARG APT_PACKAGES=""
+RUN if [ -n "${APT_PACKAGES}" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends ${APT_PACKAGES} \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
 LABEL org.opencontainers.image.title="${PACKAGE}"
 ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \

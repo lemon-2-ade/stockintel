@@ -388,6 +388,41 @@ services:
     logging: *logging
     restart: unless-stopped
 
+  # Serves models:/stockintel-direction-h5@champion; not ready until a model
+  # has been registered and promoted (see docs/MODEL_REGISTRY.md).
+  inference:
+    image: stockintel/inference:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/python-service.Dockerfile
+      args:
+        PACKAGE: stockintel-inference
+        APT_PACKAGES: libgomp1
+    command: ["python", "-m", "inference.main"]
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+      INFERENCE_MODEL_NAME: ${INFERENCE_MODEL_NAME:-stockintel-direction-h5}
+      INFERENCE_MODEL_ALIAS: ${INFERENCE_MODEL_ALIAS:-champion}
+      INFERENCE_REFRESH_INTERVAL_S: ${INFERENCE_REFRESH_INTERVAL_S:-60}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    ports:
+      - "127.0.0.1:8010:8010"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      # Liveness only: an empty registry is a normal state, not a crash loop.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 15s
+    logging: *logging
+    restart: unless-stopped
+
   # --------------------------------------------------------------------------
   # Optional developer tooling: `docker compose --profile tools up -d kafka-ui`
   # --------------------------------------------------------------------------

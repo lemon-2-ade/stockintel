@@ -14,6 +14,7 @@ dependencies = [
     "stockintel-stream-processor",
     "stockintel-sinks",
     "stockintel-api",
+    "stockintel-inference",
 ]
 
 [dependency-groups]
@@ -31,7 +32,7 @@ dev = [
 package = false
 
 [tool.uv.workspace]
-members = ["shared", "ml", "services/market-producer", "services/stream-processor", "services/sinks", "apps/api"]
+members = ["shared", "ml", "services/market-producer", "services/stream-processor", "services/sinks", "apps/api", "apps/inference"]
 
 [tool.uv.sources]
 stockintel-shared = { workspace = true }
@@ -40,6 +41,7 @@ stockintel-market-producer = { workspace = true }
 stockintel-stream-processor = { workspace = true }
 stockintel-sinks = { workspace = true }
 stockintel-api = { workspace = true }
+stockintel-inference = { workspace = true }
 
 # --------------------------------------------------------------------------- #
 # Ruff                                                                         #
@@ -91,6 +93,7 @@ mypy_path = [
     "services/stream-processor/src",
     "services/sinks/src",
     "apps/api/src",
+    "apps/inference/src",
     "tests",
 ]
 explicit_package_bases = true
@@ -101,6 +104,7 @@ files = [
     "services/stream-processor/src",
     "services/sinks/src",
     "apps/api/src",
+    "apps/inference/src",
     "scripts",
     "tests",
 ]
@@ -131,10 +135,17 @@ pythonpath = ["tests"]
 markers = [
     "integration: needs live infrastructure (Kafka/Postgres/Redis); run with `make test-integration`",
 ]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # Third-party warnings raised inside MLflow's own store/flavor code (not ours).
+    "ignore:The ``noload`` loader strategy is deprecated:DeprecationWarning",
+    "ignore::UserWarning:mlflow.*",
+    "ignore::FutureWarning:mlflow.*",
+    "ignore::DeprecationWarning:mlflow.*",
+]
 
 [tool.coverage.run]
-source = ["shared", "stockml", "market_producer", "stream_processor", "sinks", "api"]
+source = ["shared", "stockml", "market_producer", "stream_processor", "sinks", "api", "inference"]
 branch = true
 
 [tool.coverage.report]

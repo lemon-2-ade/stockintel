@@ -1,0 +1,31 @@
+[project]
+name = "stockintel-inference"
+version = "0.1.0"
+description = "Online inference: serves the @champion model from the MLflow registry over POST /predict"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "prometheus-client>=0.21",
+    "mlflow-skinny>=3.16,<4",
+    "numpy>=2.1",
+    "pandas>=2.2",
+    # Model flavors the registry may hold (see stockml.registry.train).
+    "scikit-learn>=1.5",
+    "lightgbm>=4.5",
+    "xgboost-cpu>=2.1",
+]
+
+[project.scripts]
+stockintel-inference = "inference.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inference"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }

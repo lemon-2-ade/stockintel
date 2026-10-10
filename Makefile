@@ -12,7 +12,7 @@ ENV_FILE := .env
 UV_RUN := $(UV) run --frozen $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 
 INFRA_SERVICES := kafka postgres redis mlflow prometheus grafana
-APP_SERVICES := market-producer stream-processor sink-postgres sink-redis api
+APP_SERVICES := market-producer stream-processor sink-postgres sink-redis api inference
 
 .PHONY: help
 help: ## Show this help
@@ -100,6 +100,23 @@ models: ## Tune GBMs, compare to baselines, backtest (development data only) -> 
 
 final-test: ## models + the one-time evaluation on the held-out 2023+ test period
 	$(UV) run --frozen python -m stockml.training.models --final-test
+
+# --- Registry + serving: MLFLOW_TRACKING_URI and POSTGRES_* come from .env -----
+.PHONY: register model-status promote serve-inference bench-inference
+register: ## Train the production model and register it as a candidate (audited)
+	$(UV_RUN) python -m stockml.registry.train
+
+model-status: ## Versions, aliases and evaluation tags in the registry
+	$(UV_RUN) python -m stockml.registry.promote --status
+
+promote: ## Move a version: make promote VERSION=2 TO=champion REASON="..." [ARGS=--override-gates]
+	$(UV_RUN) python -m stockml.registry.promote --version "$(VERSION)" --to "$(TO)" --reason "$(REASON)" $(ARGS)
+
+serve-inference: ## Run the inference service locally on :8010
+	$(UV_RUN) python -m inference.main
+
+bench-inference: ## Sequential latency benchmark against a running inference service
+	$(UV_RUN) python scripts/bench_inference.py --out docs/benchmarks/inference_latency.json
 
 calibrate: data ## Re-estimate simulator parameters from the historical snapshot
 	$(UV) run --frozen python -m stockml.data.calibrate
