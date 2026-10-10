@@ -96,6 +96,7 @@ class Momentum:
 
 class Logistic:
     name = "logistic"
+    probabilistic = True
 
     def __init__(self, c: float = 0.1) -> None:
         self.pipeline: Pipeline = make_pipeline(
@@ -173,7 +174,7 @@ def evaluate_direction(
         pred,
         score if use_score else None,
         horizon=horizon,
-        score_is_probability=model.name == "logistic",
+        score_is_probability=getattr(model, "probabilistic", False),
     )
 
 
@@ -323,6 +324,21 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def load_dataset(name: str, labels: LabelConfig) -> pd.DataFrame | None:
+    """Build the labelled feature dataset from the cleaned snapshot and cache it."""
+    spec = DatasetSpec.load(name)
+    processed = REPO_ROOT / "data" / "processed" / spec.name / spec.revision
+    cleaned_path = processed / "cleaned.parquet"
+    if not cleaned_path.exists():
+        log.error("dataset.missing_input", path=str(cleaned_path), hint="run make data-quality")
+        return None
+    dataset = build_dataset(pd.read_parquet(cleaned_path), labels)
+    features_dir = REPO_ROOT / "data" / "features" / spec.name / spec.revision / FEATURE_SET_VERSION
+    features_dir.mkdir(parents=True, exist_ok=True)
+    dataset.to_parquet(features_dir / "dataset.parquet", index=False)
+    return dataset
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Train and evaluate baseline models")
     parser.add_argument("--dataset", default="us-equities-daily")
@@ -330,17 +346,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     configure_logging("baselines", level=LogSettings().level, fmt="console")
 
-    spec = DatasetSpec.load(args.dataset)
-    processed = REPO_ROOT / "data" / "processed" / spec.name / spec.revision
-    cleaned_path = processed / "cleaned.parquet"
-    if not cleaned_path.exists():
-        log.error("baselines.missing_input", path=str(cleaned_path), hint="run make data-quality")
-        return 1
     cfg = RunConfig()
-    dataset = build_dataset(pd.read_parquet(cleaned_path), cfg.labels)
-    features_dir = REPO_ROOT / "data" / "features" / spec.name / spec.revision / FEATURE_SET_VERSION
-    features_dir.mkdir(parents=True, exist_ok=True)
-    dataset.to_parquet(features_dir / "dataset.parquet", index=False)
+    dataset = load_dataset(args.dataset, cfg.labels)
+    if dataset is None:
+        return 1
 
     report = run(dataset, cfg)
     reports_dir = REPO_ROOT / "data" / "reports"

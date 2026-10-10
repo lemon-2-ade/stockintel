@@ -10,6 +10,8 @@ dependencies = [
     "pyarrow>=17",
     "tzdata>=2024.1",
     "scikit-learn>=1.5",
+    "lightgbm>=4.5",
+    "xgboost-cpu>=2.1",
 ]
 
 [project.scripts]
@@ -17,6 +19,7 @@ sip-acquire = "stockml.data.acquire:main"
 sip-calibrate = "stockml.data.calibrate:main"
 sip-data-quality = "stockml.data.pipeline:main"
 sip-baselines = "stockml.training.baselines:main"
+sip-models = "stockml.training.models:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

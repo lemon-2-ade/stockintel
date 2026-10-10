@@ -82,7 +82,7 @@ $(ENV_FILE):
 	@echo "missing $(ENV_FILE): run 'make env' first" && exit 1
 
 # --- data -------------------------------------------------------------------
-.PHONY: data data-update-lock calibrate data-quality baselines
+.PHONY: data data-update-lock calibrate data-quality baselines models final-test
 data: ## Download + verify the pinned historical dataset into data/raw (read-only)
 	$(UV) run --frozen python -m stockml.data.acquire
 
@@ -94,6 +94,12 @@ data-quality: data ## Validate + clean the snapshot -> data/processed, docs/DATA
 
 baselines: ## Build the feature dataset and evaluate baselines -> docs/BASELINES.md
 	$(UV) run --frozen python -m stockml.training.baselines
+
+models: ## Tune GBMs, compare to baselines, backtest (development data only) -> docs/MODELS.md
+	$(UV) run --frozen python -m stockml.training.models
+
+final-test: ## models + the one-time evaluation on the held-out 2023+ test period
+	$(UV) run --frozen python -m stockml.training.models --final-test
 
 calibrate: data ## Re-estimate simulator parameters from the historical snapshot
 	$(UV) run --frozen python -m stockml.data.calibrate
