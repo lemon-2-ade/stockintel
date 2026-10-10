@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 5 of 14 complete** (architecture, contracts,
+> **Project status: Phase 6 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, and historical data validation). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits and baselines). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -39,7 +39,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-5)
+## What is in place (Phases 1-6)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -66,6 +66,12 @@ Full diagrams, component responsibilities and design decisions:
   rules into a reproducible training input, with real extreme market events
   classified and kept rather than deleted ([details](docs/DATA_PIPELINE.md),
   [quality report](docs/DATA_QUALITY.md)).
+- **Features and baselines** (`shared/src/shared/features`, `ml/`): one
+  incremental, causal feature computer (28 scale-free features) shared by
+  training and the live stream; forward 5-session labels; chronological
+  splits with purging and embargo plus walk-forward validation; leakage tests;
+  and naive/linear baselines. Honest result: no baseline beats the base rate
+  ([details](docs/ML_PIPELINE.md), [results](docs/BASELINES.md)).
 - **Market producer** (`services/market-producer`): a GBM simulator
   calibrated per symbol from that history, with continuous OHLC paths,
   volume/volatility coupling and labelled price/volume anomalies; a historical
@@ -150,6 +156,7 @@ make env          # create .env from .env.example, then edit the passwords
 make install      # Python deps + git hooks
 make data         # download + verify the historical training dataset (~4.5 MB)
 make data-quality # validate + clean it; writes data/processed and docs/DATA_QUALITY.md
+make baselines    # build the feature dataset, run baselines; writes docs/BASELINES.md
 make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
 make tail-raw     # peek at live events on market.raw
@@ -187,10 +194,12 @@ make help              # all targets
 - [Market producer](docs/MARKET_PRODUCER.md): simulator model, anomalies, replay, delivery
 - [Stream processing](docs/STREAM_PROCESSING.md): indicators, event-time policy, recovery, detector results
 - [API and sinks](docs/API.md): endpoints, degradation, pagination, live updates, storage writes
+- [ML pipeline](docs/ML_PIPELINE.md): problem, features, labels, splits, leakage controls, baselines
+- [Baseline results](docs/BASELINES.md) (generated)
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
-Planned: `ML_PIPELINE.md`, `PERFORMANCE.md` (with measured
+Planned: `PERFORMANCE.md` (with measured
 results only), `DEPLOYMENT.md`.
 
 ## Known limitations (current)

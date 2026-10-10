@@ -10,9 +10,9 @@ done; nothing is claimed that has not been run.
 | 2 | Historical dataset acquisition (pinned + checksummed) and simulator calibration; market simulator (GBM, configurable volatility/drift/seed, injected spikes/drops/volume bursts), provider abstraction, Kafka producer service with delivery reports, metrics, graceful shutdown | deterministic simulator tests (fixed seed); events validate against schema; service verified locally for pacing and graceful shutdown. The producer -> Kafka integration test is written but, like Phase 1's, awaits a live broker (`make dev && make test-integration`) | done |
 | 3 | Stream processor: incremental SMA/EMA/RSI/MACD/Bollinger/volatility, bounded per-symbol state, event-time handling, late/duplicate policy, rule-based anomaly detection, DLQ handling, processing-latency metric | indicator values match a pandas reference implementation; redelivery does not change results; poison message lands in DLQ | done |
 | 4 | Persistence consumer (batched idempotent upserts), Redis latest-state writer, FastAPI (REST, WebSocket, health/ready/metrics, pagination, rate limit, CORS) | API integration tests against Postgres/Redis; WebSocket throttling test | done |
-| 5 | Validation and documented cleaning of the historical snapshot (acquisition landed early, in Phase 2) | data-quality report; tests for each validation rule | **done** |
-| 6 | Shared offline/online feature library, leakage tests, chronological splits, baselines (naive, logistic/linear) | leakage test proves features at T use only data <= T; baseline metrics logged | next |
-| 7 | Gradient-boosted models (LightGBM/XGBoost), walk-forward validation, optional sequence model experiment, cost-aware backtest | comparison table vs baselines, with honest interpretation | |
+| 5 | Validation and documented cleaning of the historical snapshot (acquisition landed early, in Phase 2) | data-quality report; tests for each validation rule | done |
+| 6 | Shared offline/online feature library, leakage tests, chronological splits, baselines (naive, logistic/linear) | leakage test proves features at T use only data <= T; baseline metrics logged | **done** |
+| 7 | Gradient-boosted models (LightGBM/XGBoost), walk-forward validation, optional sequence model experiment, cost-aware backtest | comparison table vs baselines, with honest interpretation | next |
 | 8 | MLflow tracking + registry (candidate/challenger/champion aliases), explicit promotion CLI with audit log, inference service | model loads from registry; `/predict` contract tests; latency measured | |
 | 9 | Prediction streaming, outcome resolution, drift (PSI/KS), performance monitoring, alerts, retraining workflow that produces a *candidate* only | monitor detects synthetic drift in a test; no auto-promotion path exists | |
 | 10 | React + TS + Tailwind dashboard: candlesticks + volume + overlays, indicators, ML panel, anomaly feed, watchlist, pipeline status, themes | component tests; manual QA checklist; screenshots | |
@@ -21,14 +21,13 @@ done; nothing is claimed that has not been run.
 | 13 | GitHub Actions (lint, types, tests, frontend, image builds, integration stage with compose), dependency/secret scanning, optional Terraform for AWS | green pipeline on PR and main | |
 | 14 | Final documentation, diagrams, screenshots, limitations and future work | README complete; every number in docs traceable to a script | |
 
-## ML problem definition (to be finalised in Phase 6)
+## ML problem definition
 
-Planned primary task: **direction classification** of the forward log return
-over a horizon of *H* bars (`UP` / `DOWN`, with an optional `NEUTRAL` band
-`|r| < epsilon` to avoid labelling noise as signal). A regression variant
-(forward return) is tracked as a secondary task. Chronological
-train/validation/test splits with a gap of *H* bars between them (so labels
-cannot leak across a boundary), plus walk-forward validation. Baselines first.
+Decided in Phase 6: direction of the forward 5-session log return (binary
+`y_up`, optional neutral band), with the return itself as a secondary
+regression task. Chronological splits with purging and a 5-session embargo,
+plus expanding walk-forward folds; the 2023+ test set is held out. Details and
+baseline results: [ML_PIPELINE.md](ML_PIPELINE.md).
 
 ## Open questions, decided in the phase that needs them
 
