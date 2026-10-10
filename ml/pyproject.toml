@@ -9,12 +9,14 @@ dependencies = [
     "pandas>=2.2",
     "pyarrow>=17",
     "tzdata>=2024.1",
+    "scikit-learn>=1.5",
 ]
 
 [project.scripts]
 sip-acquire = "stockml.data.acquire:main"
 sip-calibrate = "stockml.data.calibrate:main"
 sip-data-quality = "stockml.data.pipeline:main"
+sip-baselines = "stockml.training.baselines:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]
