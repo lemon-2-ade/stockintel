@@ -11,3 +11,4 @@ to reverse a decision; a new ADR supersedes it.
 | [0003](0003-storage-by-access-pattern.md) | Storage by access pattern: Postgres, Redis, Kafka | Accepted |
 | [0004](0004-at-least-once-with-idempotent-sinks.md) | At-least-once delivery with idempotent sinks | Accepted |
 | [0005](0005-monorepo-uv-workspace.md) | Monorepo with a uv workspace and a shared contract package | Accepted |
+| [0006](0006-explicit-audited-promotion.md) | Explicit, audited model promotion with MLflow aliases and gates | Accepted |

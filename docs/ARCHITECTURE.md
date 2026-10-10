@@ -121,6 +121,7 @@ Each decision has an ADR in [`docs/adr/`](adr/) with the alternatives considered
 | [0003](adr/0003-storage-by-access-pattern.md) | Postgres = history, Redis = hot state, Kafka = transport | Each store used for the access pattern it is good at; Redis is never the source of truth |
 | [0004](adr/0004-at-least-once-with-idempotent-sinks.md) | At-least-once + idempotent sinks, no "exactly-once" claims | Simple, robust, honest; duplicates are neutralised by keys, not by hope |
 | [0005](adr/0005-monorepo-uv-workspace.md) | Monorepo, uv workspace, one `shared` contract package | Contracts change atomically with their consumers; per-service images stay small |
+| [0006](adr/0006-explicit-audited-promotion.md) | Explicit, audited promotion via MLflow aliases and gates | No model reaches users without a person, a reason and a record; quality-gate overrides are visible |
 
 Further decisions recorded here (short enough not to need an ADR):
 

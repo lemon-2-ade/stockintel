@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 7 of 14 complete** (architecture, contracts,
+> **Project status: Phase 8 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models and a cost-aware backtest). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, and the inference service). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -39,7 +39,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-7)
+## What is in place (Phases 1-8)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -75,6 +75,13 @@ Full diagrams, component responsibilities and design decisions:
   forecast and no strategy beats buy-and-hold after costs, on validation or
   on the once-touched 2023+ test set ([details](docs/ML_PIPELINE.md),
   [baselines](docs/BASELINES.md), [models](docs/MODELS.md)).
+- **Model registry and inference** (`ml/src/stockml/registry`, `apps/inference`):
+  training registers a version in MLflow as a *candidate* with its evaluation
+  evidence; promotion to challenger/champion is an explicit CLI command with
+  hard and soft gates, written to an audit table; the inference service serves
+  `@champion`, hot-swaps on promotion, validates the feature-set version, and
+  answers in ~2.6 ms p50 for one instance on a 2 vCPU sandbox
+  ([details](docs/MODEL_REGISTRY.md)).
 - **Market producer** (`services/market-producer`): a GBM simulator
   calibrated per symbol from that history, with continuous OHLC paths,
   volume/volatility coupling and labelled price/volume anomalies; a historical
@@ -161,6 +168,8 @@ make data         # download + verify the historical training dataset (~4.5 MB)
 make data-quality # validate + clean it; writes data/processed and docs/DATA_QUALITY.md
 make baselines    # build the feature dataset, run baselines; writes docs/BASELINES.md
 make final-test   # GBMs + backtest + held-out test; writes docs/MODELS.md
+make register     # train + register a candidate in MLflow (needs `make dev`)
+make promote VERSION=1 TO=champion REASON="..." ARGS=--override-gates
 make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
 make tail-raw     # peek at live events on market.raw
@@ -200,6 +209,7 @@ make help              # all targets
 - [API and sinks](docs/API.md): endpoints, degradation, pagination, live updates, storage writes
 - [ML pipeline](docs/ML_PIPELINE.md): problem, features, labels, splits, leakage controls, models, backtest
 - [Baseline results](docs/BASELINES.md) and [model results](docs/MODELS.md) (generated)
+- [Model registry and inference](docs/MODEL_REGISTRY.md): stages, gates, audit log, `/predict`, measured latency
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
