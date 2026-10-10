@@ -15,14 +15,16 @@ import mlflow
 import numpy as np
 import pandas as pd
 import pytest
-from inference.model import MlflowModelSource, NativePredictor, PyfuncPredictor
 from ml_fixtures import cleaned_frame
 from mlflow import MlflowClient
 
+from inference.model import MlflowModelSource, NativePredictor, PyfuncPredictor
+from model_monitor.store import MlflowProfileSource
 from shared.features import FEATURE_NAMES, FEATURE_SET_VERSION
 from stockml.features.dataset import build_dataset
 from stockml.registry.audit import JsonlAuditSink, MemoryAuditSink
 from stockml.registry.promote import promote, status
+from stockml.registry.retrain import retrain
 from stockml.registry.stages import STAGE_TAG, PromotionError, Stage
 from stockml.registry.train import evaluation_tags, train_and_register
 
@@ -220,3 +222,36 @@ def test_served_predictions_match_mlflow_pyfunc(
         reference = reference[:, -1]
     np.testing.assert_allclose(served, reference, rtol=1e-6)
     assert np.all((served > 0) & (served < 1))
+
+
+def test_reference_profile_is_stored_for_the_monitor(
+    registry: MlflowClient, versions: dict[str, str]
+) -> None:
+    reference = MlflowProfileSource().get(NAME, versions["xgboost"])
+    assert reference is not None
+    assert set(reference.features) == set(FEATURE_NAMES)
+    assert 0 < reference.base_rate < 1
+    assert reference.prediction.n > 0
+
+
+def test_retraining_produces_only_a_candidate_with_fresh_evidence(
+    registry: MlflowClient, versions: dict[str, str], tmp_path: Path
+) -> None:
+    champion_before = str(registry.get_model_version_by_alias(NAME, "champion").version)
+    dataset = build_dataset(cleaned_frame(1_400, ("AAA", "BBB"), seed=9))
+    version = retrain(
+        dataset,
+        fake_report(gain=0.0),
+        client=registry,
+        model_type="logistic",
+        model_name=NAME,
+        years=2,
+        reason="test",
+        audit_file=tmp_path / "audit.jsonl",
+        dataset_revision="test",
+    )
+    mv = registry.get_model_version(NAME, version)
+    assert mv.tags[STAGE_TAG] == "candidate"
+    assert mv.tags["evaluation_protocol"] == "retrain: wf 2019-2019, test 2020"
+    assert float(mv.tags["eval.test_null_log_loss"]) != pytest.approx(0.68), "not the old report"
+    assert str(registry.get_model_version_by_alias(NAME, "champion").version) == champion_before

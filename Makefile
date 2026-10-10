@@ -12,7 +12,7 @@ ENV_FILE := .env
 UV_RUN := $(UV) run --frozen $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 
 INFRA_SERVICES := kafka postgres redis mlflow prometheus grafana
-APP_SERVICES := market-producer stream-processor sink-postgres sink-redis api inference
+APP_SERVICES := market-producer stream-processor sink-postgres sink-redis api inference prediction-pipeline model-monitor
 
 .PHONY: help
 help: ## Show this help
@@ -102,7 +102,7 @@ final-test: ## models + the one-time evaluation on the held-out 2023+ test perio
 	$(UV) run --frozen python -m stockml.training.models --final-test
 
 # --- Registry + serving: MLFLOW_TRACKING_URI and POSTGRES_* come from .env -----
-.PHONY: register model-status promote serve-inference bench-inference
+.PHONY: register model-status promote serve-inference bench-inference retrain monitor-once simulate-monitoring
 register: ## Train the production model and register it as a candidate (audited)
 	$(UV_RUN) python -m stockml.registry.train
 
@@ -114,6 +114,15 @@ promote: ## Move a version: make promote VERSION=2 TO=champion REASON="..." [ARG
 
 serve-inference: ## Run the inference service locally on :8010
 	$(UV_RUN) python -m inference.main
+
+retrain: ## Fresh recent-years evaluation + a new candidate (never promotes): make retrain REASON="..."
+	$(UV_RUN) python -m stockml.registry.retrain --reason "$(or $(REASON),manual retraining)"
+
+monitor-once: ## One model-monitor cycle: outcomes, drift, performance -> monitoring_reports
+	$(UV_RUN) python -m model_monitor.main --once
+
+simulate-monitoring: ## Simulated bars -> features -> /predict -> Postgres -> monitor (no Kafka): INTERVAL=1d|1m
+	$(UV_RUN) python scripts/simulate_monitoring.py --interval $(or $(INTERVAL),1d)
 
 bench-inference: ## Sequential latency benchmark against a running inference service
 	$(UV_RUN) python scripts/bench_inference.py --out docs/benchmarks/inference_latency.json

@@ -13,12 +13,12 @@ from typing import Any
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
+
 from inference.config import InferenceSettings
 from inference.main import create_app
 from inference.metrics import InferenceMetrics
 from inference.model import LoadedModel, ModelHolder
 from inference.predictor import target_timestamp
-
 from shared.features import FEATURE_NAMES, FEATURE_SET_VERSION
 from shared.schemas import BarInterval, Direction, PredictionEvent
 from shared.schemas.inference import MAX_BATCH

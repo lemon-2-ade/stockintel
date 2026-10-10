@@ -14,6 +14,8 @@ members = [
     "stockintel-inference",
     "stockintel-market-producer",
     "stockintel-ml",
+    "stockintel-model-monitor",
+    "stockintel-prediction-pipeline",
     "stockintel-shared",
     "stockintel-sinks",
     "stockintel-stream-processor",
@@ -2111,6 +2113,8 @@ dependencies = [
     { name = "stockintel-inference" },
     { name = "stockintel-market-producer" },
     { name = "stockintel-ml" },
+    { name = "stockintel-model-monitor" },
+    { name = "stockintel-prediction-pipeline" },
     { name = "stockintel-shared", extra = ["db", "kafka"] },
     { name = "stockintel-sinks" },
     { name = "stockintel-stream-processor" },
@@ -2133,6 +2137,8 @@ requires-dist = [
     { name = "stockintel-inference", editable = "apps/inference" },
     { name = "stockintel-market-producer", editable = "services/market-producer" },
     { name = "stockintel-ml", editable = "ml" },
+    { name = "stockintel-model-monitor", editable = "services/model-monitor" },
+    { name = "stockintel-prediction-pipeline", editable = "services/prediction-pipeline" },
     { name = "stockintel-shared", extras = ["kafka", "db"], editable = "shared" },
     { name = "stockintel-sinks", editable = "services/sinks" },
     { name = "stockintel-stream-processor", editable = "services/stream-processor" },
@@ -2231,7 +2237,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "scikit-learn" },
-    { name = "stockintel-shared", extra = ["db"] },
+    { name = "stockintel-shared", extra = ["db", "monitoring"] },
     { name = "tzdata" },
     { name = "xgboost-cpu" },
 ]
@@ -2244,9 +2250,43 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "scikit-learn", specifier = ">=1.5" },
-    { name = "stockintel-shared", extras = ["db"], editable = "shared" },
+    { name = "stockintel-shared", extras = ["db", "monitoring"], editable = "shared" },
     { name = "tzdata", specifier = ">=2024.1" },
     { name = "xgboost-cpu", specifier = ">=2.1" },
+]
+
+[[package]]
+name = "stockintel-model-monitor"
+version = "0.1.0"
+source = { editable = "services/model-monitor" }
+dependencies = [
+    { name = "mlflow-skinny" },
+    { name = "prometheus-client" },
+    { name = "stockintel-shared", extra = ["db", "monitoring"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mlflow-skinny", specifier = ">=3.16,<4" },
+    { name = "prometheus-client", specifier = ">=0.21" },
+    { name = "stockintel-shared", extras = ["db", "monitoring"], editable = "shared" },
+]
+
+[[package]]
+name = "stockintel-prediction-pipeline"
+version = "0.1.0"
+source = { editable = "services/prediction-pipeline" }
+dependencies = [
+    { name = "httpx2" },
+    { name = "prometheus-client" },
+    { name = "stockintel-shared", extra = ["kafka"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx2", specifier = ">=2.0" },
+    { name = "prometheus-client", specifier = ">=0.21" },
+    { name = "stockintel-shared", extras = ["kafka"], editable = "shared" },
 ]
 
 [[package]]
@@ -2268,18 +2308,22 @@ db = [
 kafka = [
     { name = "confluent-kafka" },
 ]
+monitoring = [
+    { name = "numpy" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "alembic", marker = "extra == 'db'", specifier = ">=1.14,<2" },
     { name = "confluent-kafka", marker = "extra == 'kafka'", specifier = ">=2.6,<3" },
+    { name = "numpy", marker = "extra == 'monitoring'", specifier = ">=2.1" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'db'", specifier = ">=3.2,<4" },
     { name = "pydantic", specifier = ">=2.9,<3" },
     { name = "pydantic-settings", specifier = ">=2.6,<3" },
     { name = "sqlalchemy", marker = "extra == 'db'", specifier = ">=2.0.36,<3" },
     { name = "structlog", specifier = ">=24.4" },
 ]
-provides-extras = ["kafka", "db"]
+provides-extras = ["kafka", "monitoring", "db"]
 
 [[package]]
 name = "stockintel-sinks"

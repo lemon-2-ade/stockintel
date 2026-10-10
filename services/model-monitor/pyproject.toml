@@ -1,0 +1,23 @@
+[project]
+name = "stockintel-model-monitor"
+version = "0.1.0"
+description = "Model monitor: outcome resolution, data/prediction drift, live performance, retraining signal"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared[db,monitoring]",
+    "prometheus-client>=0.21",
+    "mlflow-skinny>=3.16,<4",
+]
+
+[project.scripts]
+model-monitor = "model_monitor.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/model_monitor"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }

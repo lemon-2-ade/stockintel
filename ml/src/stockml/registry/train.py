@@ -34,6 +34,7 @@ from mlflow import MlflowClient
 
 from shared.config import LogSettings
 from shared.features import FEATURE_NAMES, FEATURE_SET_VERSION
+from shared.monitoring import ReferenceProfile, profile
 from shared.observability.logs import configure_logging, get_logger
 from stockml.data.catalog import REPO_ROOT, DatasetSpec
 from stockml.registry.promote import DEFAULT_MODEL_NAME, make_audit_sink, promote
@@ -128,6 +129,25 @@ def git_commit() -> str:
         return "unknown"
 
 
+def reference_profile(model: DirectionModel, labelled: pd.DataFrame) -> ReferenceProfile:
+    """Training distributions for the monitor.
+
+    Inputs: all training rows. Output (P(up)): the most recent year of training
+    data, which for the GBMs is their early-stopping set (not fitted on), so
+    the reference resembles out-of-sample output more than in-sample output.
+    """
+    recent = labelled[
+        labelled["session_date"] > labelled["session_date"].max() - pd.DateOffset(years=1)
+    ]
+    _, p_up = model.predict(recent)
+    return ReferenceProfile(
+        feature_set_version=FEATURE_SET_VERSION,
+        features={f: profile(labelled[f].to_numpy(dtype=float)) for f in FEATURES},
+        prediction=profile(p_up),
+        base_rate=float(labelled["y_up"].mean()),
+    )
+
+
 def train_and_register(
     dataset: pd.DataFrame,
     report: dict[str, Any],
@@ -137,7 +157,15 @@ def train_and_register(
     model_name: str,
     audit_file: Path | None,
     dataset_revision: str,
+    eval_tags: dict[str, str] | None = None,
+    reason: str | None = None,
+    artifacts: dict[str, dict[str, Any]] | None = None,
 ) -> str:
+    """Fit on all labelled rows, log, register and move to ``candidate``.
+
+    ``eval_tags`` defaults to the Phase 7 evaluation in ``report``; the
+    retraining workflow passes its own, fresher evaluation instead.
+    """
     cfg = ModelsConfig()
     labelled = dataset.dropna(subset=["y_up"])
     model = build_model(model_type, report, cfg.run.splits.embargo_sessions)
@@ -153,8 +181,11 @@ def train_and_register(
         "train_rows": str(len(labelled)),
         "dataset_revision": dataset_revision,
         "git_commit": git_commit(),
-        **evaluation_tags(report, model_type),
+        **(eval_tags if eval_tags is not None else evaluation_tags(report, model_type)),
     }
+    tags.setdefault(
+        "evaluation_protocol", "phase 7: untuned walk-forward 2020-2022, held-out test 2023+"
+    )
     metadata = {
         "feature_set_version": FEATURE_SET_VERSION,
         "feature_names": FEATURES,
@@ -173,6 +204,11 @@ def train_and_register(
         )
         mlflow.log_dict(report, "evaluation/models.json")
         mlflow.log_dict({"features": FEATURES}, "features.json")
+        mlflow.log_dict(
+            reference_profile(model, labelled).to_dict(), "monitoring/reference_profile.json"
+        )
+        for path, content in (artifacts or {}).items():
+            mlflow.log_dict(content, path)
         model_uri = log_model(model, labelled[FEATURES].head(5).astype(float), metadata)
         version = mlflow.register_model(model_uri, model_name, tags=tags)
         log.info(
@@ -185,7 +221,7 @@ def train_and_register(
         name=model_name,
         version=str(version.version),
         to=Stage.CANDIDATE,
-        reason=f"registered by training ({model_type}, data to {tags['train_end']})",
+        reason=reason or f"registered by training ({model_type}, data to {tags['train_end']})",
         actor="training-pipeline",
     )
     return str(version.version)

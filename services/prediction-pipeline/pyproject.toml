@@ -1,0 +1,23 @@
+[project]
+name = "stockintel-prediction-pipeline"
+version = "0.1.0"
+description = "Prediction pipeline: market.enriched -> shared features -> inference /predict -> market.predictions"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "stockintel-shared[kafka]",
+    "prometheus-client>=0.21",
+    "httpx2>=2.0",
+]
+
+[project.scripts]
+prediction-pipeline = "prediction_pipeline.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prediction_pipeline"]
+
+[tool.uv.sources]
+stockintel-shared = { workspace = true }

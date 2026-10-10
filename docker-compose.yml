@@ -423,6 +423,71 @@ services:
     logging: *logging
     restart: unless-stopped
 
+  # market.enriched -> shared features -> inference -> market.predictions.
+  prediction-pipeline:
+    image: stockintel/prediction-pipeline:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/python-service.Dockerfile
+      args:
+        PACKAGE: stockintel-prediction-pipeline
+    command: ["python", "-m", "prediction_pipeline.main"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PIPELINE_INFERENCE_URL: http://inference:8010
+      PIPELINE_PREDICT_EVERY_N_BARS: ${PIPELINE_PREDICT_EVERY_N_BARS:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      inference:
+        condition: service_started  # predictions degrade to "none" until a model is served
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/metrics', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 20s
+    logging: *logging
+    restart: unless-stopped
+
+  # Outcomes, drift, live performance, retraining signal -> monitoring_reports.
+  model-monitor:
+    image: stockintel/model-monitor:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/python-service.Dockerfile
+      args:
+        PACKAGE: stockintel-model-monitor
+    command: ["python", "-m", "model_monitor.main"]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-stockintel}
+      POSTGRES_USER: ${POSTGRES_USER:-stockintel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+      MONITOR_INTERVAL_S: ${MONITOR_INTERVAL_S:-300}
+      MONITOR_WINDOW_HOURS: ${MONITOR_WINDOW_HOURS:-24}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/metrics', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 15s
+    logging: *logging
+    restart: unless-stopped
+
   # --------------------------------------------------------------------------
   # Optional developer tooling: `docker compose --profile tools up -d kafka-ui`
   # --------------------------------------------------------------------------

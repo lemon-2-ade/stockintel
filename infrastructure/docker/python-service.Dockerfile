@@ -33,6 +33,8 @@ COPY ml/pyproject.toml ml/pyproject.toml
 COPY services/market-producer/pyproject.toml services/market-producer/pyproject.toml
 COPY services/stream-processor/pyproject.toml services/stream-processor/pyproject.toml
 COPY services/sinks/pyproject.toml services/sinks/pyproject.toml
+COPY services/prediction-pipeline/pyproject.toml services/prediction-pipeline/pyproject.toml
+COPY services/model-monitor/pyproject.toml services/model-monitor/pyproject.toml
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
 COPY apps/inference/pyproject.toml apps/inference/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Offline data + ML pipeline: dataset acquisition, validation, features, training, evaluation"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "stockintel-shared[db]",
+    "stockintel-shared[db,monitoring]",
     "numpy>=2.1",
     "pandas>=2.2",
     "pyarrow>=17",

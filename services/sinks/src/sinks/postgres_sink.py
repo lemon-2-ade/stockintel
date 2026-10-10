@@ -106,7 +106,7 @@ def prediction_row(e: PredictionEvent) -> Row:
         "model_name": e.model_name,
         "model_version": e.model_version,
         "feature_set_version": e.feature_set_version,
-        "features": None,
+        "features": e.features,
         "inference_latency_ms": e.inference_latency_ms,
         "source_event_id": e.source_event_id,
     }

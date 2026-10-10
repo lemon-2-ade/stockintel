@@ -79,6 +79,11 @@ class PredictionEvent(BaseEvent):
     feature_set_version: Identifier
     inference_latency_ms: float | None = Field(default=None, ge=0)
     source_event_id: UUID
+    features: dict[str, FiniteFloat] | None = Field(
+        default=None,
+        description="Model input snapshot, attached by the prediction pipeline for drift "
+        "monitoring. Optional (tolerant-reader addition, schema_version stays 1).",
+    )
 
     @model_validator(mode="after")
     def _check_consistency(self) -> Self:
