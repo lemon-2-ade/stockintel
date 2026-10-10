@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 6 of 14 complete** (architecture, contracts,
+> **Project status: Phase 7 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits and baselines). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models and a cost-aware backtest). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -39,7 +39,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-6)
+## What is in place (Phases 1-7)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -70,8 +70,11 @@ Full diagrams, component responsibilities and design decisions:
   incremental, causal feature computer (28 scale-free features) shared by
   training and the live stream; forward 5-session labels; chronological
   splits with purging and embargo plus walk-forward validation; leakage tests;
-  and naive/linear baselines. Honest result: no baseline beats the base rate
-  ([details](docs/ML_PIPELINE.md), [results](docs/BASELINES.md)).
+  naive/linear baselines; LightGBM/XGBoost tuned on walk-forward folds; and a
+  weekly cost-aware backtest. Honest result: no model beats the base-rate
+  forecast and no strategy beats buy-and-hold after costs, on validation or
+  on the once-touched 2023+ test set ([details](docs/ML_PIPELINE.md),
+  [baselines](docs/BASELINES.md), [models](docs/MODELS.md)).
 - **Market producer** (`services/market-producer`): a GBM simulator
   calibrated per symbol from that history, with continuous OHLC paths,
   volume/volatility coupling and labelled price/volume anomalies; a historical
@@ -157,6 +160,7 @@ make install      # Python deps + git hooks
 make data         # download + verify the historical training dataset (~4.5 MB)
 make data-quality # validate + clean it; writes data/processed and docs/DATA_QUALITY.md
 make baselines    # build the feature dataset, run baselines; writes docs/BASELINES.md
+make final-test   # GBMs + backtest + held-out test; writes docs/MODELS.md
 make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
 make tail-raw     # peek at live events on market.raw
@@ -194,8 +198,8 @@ make help              # all targets
 - [Market producer](docs/MARKET_PRODUCER.md): simulator model, anomalies, replay, delivery
 - [Stream processing](docs/STREAM_PROCESSING.md): indicators, event-time policy, recovery, detector results
 - [API and sinks](docs/API.md): endpoints, degradation, pagination, live updates, storage writes
-- [ML pipeline](docs/ML_PIPELINE.md): problem, features, labels, splits, leakage controls, baselines
-- [Baseline results](docs/BASELINES.md) (generated)
+- [ML pipeline](docs/ML_PIPELINE.md): problem, features, labels, splits, leakage controls, models, backtest
+- [Baseline results](docs/BASELINES.md) and [model results](docs/MODELS.md) (generated)
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
