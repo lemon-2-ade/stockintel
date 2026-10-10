@@ -86,6 +86,12 @@ def test_log_returns_match_gbm_parameters() -> None:
     assert abs(np.mean(log_returns)) < 4 * expected / math.sqrt(len(log_returns))
 
 
+def test_daily_bars_carry_one_session_of_variance() -> None:
+    """Regression: a 1d bar used to get 24 h of variance (sigma x1.9 vs real daily data)."""
+    daily = make(interval=BarInterval.D1, anomalies=AnomalyConfig.disabled())
+    assert daily.bar_sigma == pytest.approx(PARAMS.sigma_annual / math.sqrt(252))
+
+
 def test_volatility_multiplier_scales_moves() -> None:
     calm = make(volatility_multiplier=1.0, anomalies=AnomalyConfig.disabled())
     wild = make(volatility_multiplier=5.0, anomalies=AnomalyConfig.disabled())

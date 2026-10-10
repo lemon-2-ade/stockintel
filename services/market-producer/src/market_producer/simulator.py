@@ -112,7 +112,9 @@ class SymbolSimulator:
         self._price = round(params.start_price, 2)
         self._substeps = substeps
 
-        seconds = interval.duration.total_seconds()
+        # A bar never spans more than one trading session: a daily bar carries
+        # one session of variance (6.5 h), not 24 h of it.
+        seconds = min(interval.duration.total_seconds(), TRADING_SECONDS_PER_DAY)
         self._bar_years = seconds / TRADING_SECONDS_PER_YEAR
         self._sigma = params.sigma_annual * volatility_multiplier
         mu = params.mu_annual if drift_annual is None else drift_annual
