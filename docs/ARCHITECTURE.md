@@ -106,6 +106,7 @@ flowchart TD
 | Features | `ml/features/` | One feature library used offline *and* online | n/a (library) | 6 |
 | Training / evaluation | `ml/training/`, `ml/evaluation/` | Baselines, GBMs, walk-forward CV, MLflow logging | batch job | 6-8 |
 | Inference service | `apps/inference/` | Loads champion from registry, `POST /predict` | stateless replicas | 8 |
+| Prediction pipeline | `services/prediction-pipeline/` | `market.enriched` -> shared features -> `/predict` -> `market.predictions` | consumer-group members | 9 |
 | Model monitor | `services/model-monitor/` | Outcome join, drift, performance, alerts, retrain trigger | single scheduled worker | 9 |
 | Dashboard | `apps/frontend/` | React + TS + Tailwind, Lightweight Charts | static assets on CDN | 10 |
 | Observability | `infrastructure/prometheus`, `infrastructure/grafana` | Metrics, dashboards, alerts | n/a | 1 (base), 11 |

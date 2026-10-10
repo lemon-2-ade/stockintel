@@ -39,7 +39,10 @@ bar so that high and low are the extremes of an actual path:
 
 $$\ln S_{t+h} = \ln S_t + \left(\mu - \tfrac{1}{2}\sigma^2\right)h + \sigma\sqrt{h}\,Z,\qquad Z\sim\mathcal N(0,1)$$
 
-- `h` is measured in **trading time** (252 sessions x 6.5 h), consistent with
+- `h` is measured in **trading time** (252 sessions x 6.5 h), and a bar never
+  spans more than one session (a `1d` bar is one session, `h = 1/252`; before
+  Phase 9 it wrongly received 24 h of variance, see
+  [MONITORING.md](MONITORING.md#end-to-end-check-on-simulated-data)), consistent with
   how the calibration annualises daily data.
 - **Continuity**: every bar opens at the previous close; prices are rounded to
   cents (rounding is monotonic, so OHLC ordering is preserved).

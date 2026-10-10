@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 8 of 14 complete** (architecture, contracts,
+> **Project status: Phase 9 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, and the inference service). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -39,7 +39,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-8)
+## What is in place (Phases 1-9)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -82,6 +82,15 @@ Full diagrams, component responsibilities and design decisions:
   `@champion`, hot-swaps on promotion, validates the feature-set version, and
   answers in ~2.6 ms p50 for one instance on a 2 vCPU sandbox
   ([details](docs/MODEL_REGISTRY.md)).
+- **Prediction pipeline and monitoring** (`services/prediction-pipeline`,
+  `services/model-monitor`): live bars -> the same feature code as training
+  (parity tested to 1e-12) -> `/predict` -> `market.predictions`, degrading to
+  "no prediction" when the model is down; outcomes joined once the target time
+  passes; PSI/KS drift against a reference profile stored with each model;
+  live log loss against the base-rate forecast; a retraining job that can only
+  produce a candidate. On simulated 1-minute bars the monitor flags 24 of 28
+  inputs as drifted, which is correct for a model trained on daily data
+  ([details](docs/MONITORING.md)).
 - **Market producer** (`services/market-producer`): a GBM simulator
   calibrated per symbol from that history, with continuous OHLC paths,
   volume/volatility coupling and labelled price/volume anomalies; a historical
@@ -170,6 +179,8 @@ make baselines    # build the feature dataset, run baselines; writes docs/BASELI
 make final-test   # GBMs + backtest + held-out test; writes docs/MODELS.md
 make register     # train + register a candidate in MLflow (needs `make dev`)
 make promote VERSION=1 TO=champion REASON="..." ARGS=--override-gates
+make retrain REASON="..." # fresh evaluation + new candidate (never promotes)
+make monitor-once         # outcomes, drift, performance -> monitoring_reports
 make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
 make tail-raw     # peek at live events on market.raw
@@ -210,6 +221,7 @@ make help              # all targets
 - [ML pipeline](docs/ML_PIPELINE.md): problem, features, labels, splits, leakage controls, models, backtest
 - [Baseline results](docs/BASELINES.md) and [model results](docs/MODELS.md) (generated)
 - [Model registry and inference](docs/MODEL_REGISTRY.md): stages, gates, audit log, `/predict`, measured latency
+- [Prediction pipeline and monitoring](docs/MONITORING.md): features online, outcomes, drift, retraining, simulation results
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 

@@ -1,0 +1,512 @@
+{
+ "interval": "1m",
+ "bars": 4800,
+ "predictions": 4080,
+ "status_counts": {
+  "data_drift:alert": 24,
+  "data_drift:ok": 2,
+  "data_drift:warning": 2,
+  "operational:warning": 1,
+  "performance:ok": 2,
+  "prediction_drift:alert": 1
+ },
+ "reports": [
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_1",
+   "value": 5.4883,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4248,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0,
+    "reference_median": 0.0007
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_5",
+   "value": 5.3289,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4625,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0001,
+    "reference_median": 0.0039
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_10",
+   "value": 5.0198,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4766,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0001,
+    "reference_median": 0.0076
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_20",
+   "value": 4.4931,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4974,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0002,
+    "reference_median": 0.0144
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_lag_1",
+   "value": 5.4883,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4248,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0,
+    "reference_median": 0.0007
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_lag_2",
+   "value": 5.4883,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4249,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0,
+    "reference_median": 0.0007
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_lag_3",
+   "value": 5.4758,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4248,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0,
+    "reference_median": 0.0007
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "ret_lag_4",
+   "value": 5.4832,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4249,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0,
+    "reference_median": 0.0007
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "gap",
+   "value": 8.2829,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.54,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0,
+    "reference_median": 0.0005
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "hl_range",
+   "value": 7.7516,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.9905,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.001,
+    "reference_median": 0.0176
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "close_pos",
+   "value": 0.3323,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.1895,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.5,
+    "reference_median": 0.5294
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "close_sma10",
+   "value": 4.3673,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4709,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0001,
+    "reference_median": 0.0037
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "close_sma20",
+   "value": 4.3576,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4924,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0001,
+    "reference_median": 0.0074
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "close_sma50",
+   "value": 4.5163,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.5121,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0002,
+    "reference_median": 0.0165
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "sma10_sma50",
+   "value": 4.4999,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.511,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0,
+    "reference_median": 0.0134
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "macd_norm",
+   "value": 4.516,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.5161,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0,
+    "reference_median": 0.0046
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "macd_hist_norm",
+   "value": 4.1293,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.4014,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0,
+    "reference_median": 0.0001
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "vol_10",
+   "value": 6.3538,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.9749,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0008,
+    "reference_median": 0.0136
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "vol_20",
+   "value": 6.7491,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.961,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0008,
+    "reference_median": 0.0143
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "vol_ratio_10_60",
+   "value": 0.1504,
+   "status": "warning",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.0864,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.9478,
+    "reference_median": 0.898
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "atr_14_norm",
+   "value": 8.2829,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 1.0,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0011,
+    "reference_median": 0.0204
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "bb_width_20",
+   "value": 6.0274,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.9553,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0058,
+    "reference_median": 0.0917
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "bb_pos_20",
+   "value": 0.0614,
+   "status": "ok",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.1102,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.4787,
+    "reference_median": 0.602
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "rsi_14",
+   "value": 0.0962,
+   "status": "ok",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.13,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.4929,
+    "reference_median": 0.5348
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "volume_ratio_20",
+   "value": 0.1407,
+   "status": "warning",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.1088,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0885,
+    "reference_median": -0.0831
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "volume_change",
+   "value": 0.4494,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.1602,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": -0.0043,
+    "reference_median": -0.0167
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "day_of_week",
+   "value": 7.5501,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.82,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 0.0,
+    "reference_median": 2.0
+   }
+  },
+  {
+   "type": "data_drift",
+   "metric": "psi",
+   "feature": "month",
+   "value": 7.4145,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "ks_statistic": 0.93,
+    "ks_p_value": 0.0,
+    "ks_reject": true,
+    "live_median": 1.0,
+    "reference_median": 7.0
+   }
+  },
+  {
+   "type": "prediction_drift",
+   "metric": "psi",
+   "feature": null,
+   "value": 5.0378,
+   "status": "alert",
+   "details": {
+    "n": 4080,
+    "live_mean_p_up": 0.5148,
+    "reference_median_p_up": 0.5563
+   }
+  },
+  {
+   "type": "performance",
+   "metric": "log_loss_minus_null",
+   "feature": null,
+   "value": -0.0085,
+   "status": "ok",
+   "details": {
+    "n": 3977,
+    "null_log_loss": 0.7031,
+    "training_base_rate": 0.5549,
+    "accuracy": 0.485,
+    "live_majority_rate": 0.5175
+   }
+  },
+  {
+   "type": "performance",
+   "metric": "accuracy_minus_majority",
+   "feature": null,
+   "value": -0.0324,
+   "status": "ok",
+   "details": {
+    "n": 3977,
+    "accuracy": 0.485,
+    "live_majority_rate": 0.5175
+   }
+  },
+  {
+   "type": "operational",
+   "metric": "retrain_recommended",
+   "feature": null,
+   "value": 1.0,
+   "status": "warning",
+   "details": {
+    "reasons": [
+     "24/28 inputs in PSI alert"
+    ],
+    "drifted_features": [
+     "atr_14_norm",
+     "bb_width_20",
+     "close_pos",
+     "close_sma10",
+     "close_sma20",
+     "close_sma50",
+     "day_of_week",
+     "gap",
+     "hl_range",
+     "macd_hist_norm",
+     "macd_norm",
+     "month",
+     "ret_1",
+     "ret_10",
+     "ret_20",
+     "ret_5",
+     "ret_lag_1",
+     "ret_lag_2",
+     "ret_lag_3",
+     "ret_lag_4",
+     "sma10_sma50",
+     "vol_10",
+     "vol_20",
+     "volume_change"
+    ],
+    "action": "run `make retrain`; the result is a candidate that still needs promotion"
+   }
+  }
+ ]
+}
