@@ -65,9 +65,12 @@ psycopg 3, Redis via `redis.asyncio`).
 | GET | `/api/v1/stocks/{symbol}/history?interval&start&end&before&limit` | DB, keyset pagination |
 | GET | `/api/v1/stocks/{symbol}/indicators?interval&before&limit` | DB |
 | GET | `/api/v1/stocks/{symbol}/anomalies?before&limit` | cache (live), DB (paging) |
-| GET | `/api/v1/stocks/{symbol}/predictions?before&limit` | DB |
+| GET | `/api/v1/stocks/{symbol}/predictions?before&limit` | DB, each with its `outcome` once resolved (Phase 9 monitor) |
 | GET | `/api/v1/anomalies?before&limit` | global feed: cache, DB fallback |
 | GET / POST / DELETE | `/api/v1/watchlist[/{symbol}]` | DB (user = `X-User-Id` header) |
+| GET | `/api/v1/model` | current champion from the promotion audit log (gates overridden, evaluation), `null` if none |
+| GET | `/api/v1/monitoring` | latest model-monitor cycle (drift, performance, retraining signal), `null` before the first |
+| GET | `/api/v1/status` | stores, freshness of market data / predictions / monitor, served model, stale symbols |
 | GET | `/health` | liveness, no dependencies |
 | GET | `/ready` | `ready` / `degraded` (200) / `unavailable` (503) |
 | GET | `/metrics` | Prometheus |

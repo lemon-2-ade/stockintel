@@ -10,13 +10,15 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 9 of 14 complete** (architecture, contracts,
+> **Project status: Phase 10 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow, and the React dashboard). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
-<!-- Screenshots / GIF of the dashboard will be added in Phase 10. -->
+![Dashboard: live prices, deterministic analytics, rule-based anomalies and an experimental model estimate shown next to its base rate](docs/screenshots/dashboard-dark.png)
+
+*Live dashboard on simulated 1-second bars. The model panel shows P(up) against the historical base rate and states that the deployed model has no demonstrated edge ([details](docs/FRONTEND.md)).*
 
 ## Architecture
 
@@ -39,7 +41,7 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-9)
+## What is in place (Phases 1-10)
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -91,6 +93,14 @@ Full diagrams, component responsibilities and design decisions:
   produce a candidate. On simulated 1-minute bars the monitor flags 24 of 28
   inputs as drifted, which is correct for a model trained on daily data
   ([details](docs/MONITORING.md)).
+- **Dashboard** (`apps/frontend`): React 19 + TypeScript + Tailwind 4 (Vite
+  SPA) with TradingView Lightweight Charts. Live candlesticks, volume and
+  overlays over one throttled WebSocket; indicators, anomaly feed, watchlist,
+  pipeline status, dark/light themes. The model panel always shows the base
+  rate and the promotion audit trail next to the estimate. It degrades to the
+  last known data when the API, inference or WebSocket fails. 28 component
+  tests and a manual QA run against the production build
+  ([details](docs/FRONTEND.md)).
 - **Market producer** (`services/market-producer`): a GBM simulator
   calibrated per symbol from that history, with continuous OHLC paths,
   volume/volatility coupling and labelled price/volume anomalies; a historical
@@ -135,23 +145,30 @@ Full diagrams, component responsibilities and design decisions:
 ├── services/
 │   ├── market-producer/     # simulator + replay providers -> market.raw
 │   ├── stream-processor/    # indicators + anomaly detection -> market.enriched / anomalies
-│   └── sinks/               # Kafka -> Postgres (history) and Redis (latest state, pub/sub)
+│   ├── sinks/               # Kafka -> Postgres (history) and Redis (latest state, pub/sub)
+│   ├── prediction-pipeline/ # market.enriched -> shared features -> /predict -> market.predictions
+│   └── model-monitor/       # outcomes, drift, live performance, retraining signal
 ├── apps/
-│   └── api/                 # FastAPI REST + WebSocket
-├── ml/                      # stockml: dataset acquisition, calibration (later: features, training)
+│   ├── api/                 # FastAPI REST + WebSocket
+│   ├── inference/           # serves the @champion model: POST /predict
+│   └── frontend/            # React + TypeScript + Tailwind dashboard (Vite)
+├── ml/                      # stockml: data, features/labels, training, evaluation, registry
 │   └── datasets/            # pinned dataset specs + checksum lock files
 ├── shared/                  # stockintel-shared: contracts used by every service
 │   └── src/shared/
 │       ├── schemas/         # versioned Kafka event models + registry
 │       ├── kafka/           # topics, client configs, serde, provisioner
 │       ├── db/              # SQLAlchemy models, engine, Alembic migrations
+│       ├── features/        # the one feature implementation (training + serving)
+│       ├── monitoring/      # PSI/KS drift statistics, reference profiles
 │       ├── observability/   # structured logging
 │       └── utils/           # retry/backoff
 ├── infrastructure/
-│   ├── docker/              # generic Python-service image + MLflow image
+│   ├── docker/              # Python-service, MLflow and dashboard (nginx) images
 │   ├── postgres/init/       # first-boot SQL (MLflow DB/role)
 │   ├── prometheus/          # scrape config
 │   └── grafana/             # provisioned datasource + dashboards
+├── scripts/                 # benchmarks, simulations, the Kafka-free demo feed
 ├── tests/
 │   ├── unit/                # no infrastructure needed
 │   └── integration/         # against the running stack
@@ -161,14 +178,15 @@ Full diagrams, component responsibilities and design decisions:
 └── .env.example
 ```
 
-Planned additions, each in the phase that implements it: `services/model-monitor`,
-`apps/inference`, `apps/frontend`, `ml` features/training/evaluation,
-`infrastructure/terraform`, `.github/workflows/`.
+Planned additions, each in the phase that implements it: Grafana dashboards and
+alert rules (Phase 11), load tests (Phase 12), `.github/workflows/` and optional
+`infrastructure/terraform` (Phase 13).
 
 ## Getting started
 
 Prerequisites: Docker with Compose v2, GNU Make, and
-[uv](https://docs.astral.sh/uv/) (it installs Python 3.12 automatically).
+[uv](https://docs.astral.sh/uv/) (it installs Python 3.12 automatically); Node.js 20.19+ only
+for working on the dashboard outside Docker.
 
 ```bash
 make env          # create .env from .env.example, then edit the passwords
@@ -180,6 +198,7 @@ make final-test   # GBMs + backtest + held-out test; writes docs/MODELS.md
 make register     # train + register a candidate in MLflow (needs `make dev`)
 make promote VERSION=1 TO=champion REASON="..." ARGS=--override-gates
 make retrain REASON="..." # fresh evaluation + new candidate (never promotes)
+make frontend-dev         # dashboard with hot reload on :5173 (Compose serves it on :8080)
 make monitor-once         # outcomes, drift, performance -> monitoring_reports
 make dev          # build images, start the stack, migrate DB, provision topics, start producer
 make ps           # everything should be "healthy"
@@ -195,6 +214,7 @@ make tail-anomalies   # detected anomalies as they happen
 | MLflow | http://localhost:5000 |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3000 |
+| Dashboard | http://localhost:8080 |
 | API + OpenAPI docs | http://localhost:8000/docs |
 | Producer metrics | http://localhost:8001/metrics |
 | Kafka UI (`make kafka-ui`) | http://localhost:8081 |
@@ -222,6 +242,7 @@ make help              # all targets
 - [Baseline results](docs/BASELINES.md) and [model results](docs/MODELS.md) (generated)
 - [Model registry and inference](docs/MODEL_REGISTRY.md): stages, gates, audit log, `/predict`, measured latency
 - [Prediction pipeline and monitoring](docs/MONITORING.md): features online, outcomes, drift, retraining, simulation results
+- [Dashboard](docs/FRONTEND.md): data flow, honesty rules, degradation, accessibility, QA checklist
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
