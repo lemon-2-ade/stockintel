@@ -12,7 +12,7 @@ ENV_FILE := .env
 UV_RUN := $(UV) run --frozen $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 
 INFRA_SERVICES := kafka postgres redis mlflow prometheus grafana
-APP_SERVICES := market-producer stream-processor sink-postgres sink-redis api inference prediction-pipeline model-monitor
+APP_SERVICES := market-producer stream-processor sink-postgres sink-redis api inference prediction-pipeline model-monitor frontend
 
 .PHONY: help
 help: ## Show this help
@@ -153,3 +153,21 @@ cov: ## Unit tests with coverage report
 	$(UV) run --frozen pytest --cov --cov-report=term-missing
 
 check: lint typecheck test ## Everything CI runs on a pull request
+
+# --- dashboard (apps/frontend) ------------------------------------------------
+FRONTEND := apps/frontend
+.PHONY: frontend-install frontend-dev frontend-check frontend-build demo-feed
+frontend-install: ## Install dashboard dependencies (npm ci)
+	cd $(FRONTEND) && npm ci
+
+frontend-dev: ## Vite dev server on :5173, proxying /api and /ws to the API on :8000
+	cd $(FRONTEND) && npm run dev
+
+frontend-check: ## Dashboard typecheck + lint + format check + tests
+	cd $(FRONTEND) && npm run check
+
+frontend-build: ## Production build of the dashboard -> apps/frontend/dist
+	cd $(FRONTEND) && npm run build
+
+demo-feed: ## Live simulated data into Postgres/Redis without Kafka (needs API stores + inference)
+	$(UV_RUN) python scripts/demo_feed.py --monitor-every 60

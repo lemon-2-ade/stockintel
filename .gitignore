@@ -39,3 +39,4 @@ mlartifacts/
 !.vscode/extensions.json
 .DS_Store
 .directory
+dump.rdb

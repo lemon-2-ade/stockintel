@@ -367,7 +367,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
-      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:5173}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080}
       API_RATE_LIMIT_PER_S: ${API_RATE_LIMIT_PER_S:-20}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
@@ -485,6 +485,25 @@ services:
       retries: 3
       start_period: 20s
     stop_grace_period: 15s
+    logging: *logging
+    restart: unless-stopped
+
+  # Dashboard (static SPA + same-origin proxy to the API): http://localhost:8080
+  frontend:
+    image: stockintel/frontend:dev
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     logging: *logging
     restart: unless-stopped
 
