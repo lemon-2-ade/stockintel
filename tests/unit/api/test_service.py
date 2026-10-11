@@ -87,6 +87,53 @@ class FakeDb:
         self._check()
         return [bar_row()]
 
+    async def ping(self) -> None:
+        self._check()
+
+    async def champion(self) -> dict[str, Any] | None:
+        self._check()
+        return {
+            "model_name": "m",
+            "model_version": "4",
+            "created_at": NOW - timedelta(days=1),
+            "actor": "dev",
+            "reason": "demo",
+            "metrics": {
+                "overridden_gates": ["beats_base_rate"],
+                "evaluation": {"eval.test_base_rate": "0.5635", "eval.bad": "n/a"},
+            },
+        }
+
+    async def latest_monitoring(self) -> list[dict[str, Any]]:
+        self._check()
+        common = {
+            "model_name": "m",
+            "model_version": "4",
+            "window_start": NOW - timedelta(hours=24),
+            "window_end": NOW,
+            "created_at": NOW - timedelta(minutes=30),
+            "threshold": None,
+            "details": {},
+        }
+        return [
+            common
+            | {
+                "report_type": "data_drift",
+                "metric_name": "psi",
+                "feature_name": "ret_5",
+                "value": 0.4,
+                "status": "alert",
+            },
+            common
+            | {
+                "report_type": "operational",
+                "metric_name": "retrain_recommended",
+                "feature_name": None,
+                "value": 1.0,
+                "status": "warning",
+            },
+        ]
+
 
 class FakeCache:
     def __init__(self, *, available: bool = True, warm: bool = True) -> None:
@@ -111,6 +158,13 @@ class FakeCache:
 
     async def latest_prediction(self, symbol: str) -> None:
         self._check()
+
+    async def ping(self) -> None:
+        self._check()
+
+    async def latest_predictions(self, symbols: list[str]) -> dict[str, Any]:
+        self._check()
+        return {"AAPL": {"timestamp": (BAR_TS - timedelta(minutes=10)).isoformat()}}
 
 
 def service(db: FakeDb, cache: FakeCache) -> MarketService:
@@ -177,3 +231,34 @@ async def test_listing_merges_db_and_cache_symbols() -> None:
 async def test_stale_data_is_flagged() -> None:
     svc = MarketService(FakeDb(), FakeCache(), clock=lambda: NOW + timedelta(minutes=5))  # type: ignore[arg-type]
     assert (await svc.stock_detail("AAPL")).freshness.stale
+
+
+async def test_model_status_and_monitoring_summary() -> None:
+    svc = service(FakeDb(), FakeCache())
+    model = await svc.model_status()
+    assert model is not None
+    assert model.overridden_gates == ["beats_base_rate"]
+    assert model.evaluation == {"test_base_rate": pytest.approx(0.5635)}, "non-numeric dropped"
+    summary = await svc.monitoring()
+    assert summary is not None
+    assert summary.status_counts == {"ok": 0, "warning": 1, "alert": 1}
+    assert summary.retrain_recommended
+
+
+async def test_pipeline_status_flags_stale_stages() -> None:
+    status = await service(FakeDb(), FakeCache()).pipeline_status(monitor_stale_after_s=900)
+    assert status.stores == {"postgres": "ok", "redis": "ok"}
+    assert status.market_data.status == "ok"
+    assert status.predictions.status == "stale", "10 minutes old on 1s bars"
+    assert status.monitoring.status == "stale", "30 minutes > 15 minute limit"
+    assert status.model is not None
+
+
+async def test_pipeline_status_survives_a_database_outage() -> None:
+    status = await service(FakeDb(available=False), FakeCache()).pipeline_status(
+        monitor_stale_after_s=900
+    )
+    assert status.stores["postgres"].startswith("error")
+    assert status.model is None
+    assert status.monitoring.status == "missing"
+    assert status.market_data.status == "ok", "live data still comes from the cache"

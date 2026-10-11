@@ -9,10 +9,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 import redis
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine
+from sqlalchemy import Engine, insert, select
 
 from api.config import ApiSettings
 from api.main import create_app
+from shared.db.models import ModelDeployment, MonitoringReport, Prediction, PredictionOutcome
 from shared.schemas import (
     AnomalyEvent,
     AnomalyType,
@@ -273,3 +274,76 @@ def test_websocket_rejects_bad_input_and_foreign_origins(client: TestClient) -> 
         client.websocket_connect("/ws/market/AAPL", headers={"Origin": "http://evil.example"}),
     ):
         pass
+
+
+def test_ml_status_endpoints(client: TestClient, seeded: str, migrated_engine: Engine) -> None:
+    model_name = f"test-model-{seeded.lower()}"
+    later = datetime.now(UTC) + timedelta(days=1)  # newest rows in shared tables
+    with migrated_engine.begin() as conn:
+        prediction_id = conn.execute(
+            select(Prediction.prediction_id).where(Prediction.symbol == seeded)
+        ).scalar_one()
+        conn.execute(
+            insert(PredictionOutcome).values(
+                prediction_id=prediction_id,
+                actual_return=-0.01,
+                actual_direction="down",
+                is_correct=False,
+            )
+        )
+        conn.execute(
+            insert(ModelDeployment).values(
+                model_name=model_name,
+                model_version="7",
+                from_stage="candidate",
+                to_stage="champion",
+                reason="test",
+                actor="pytest",
+                metrics={
+                    "overridden_gates": ["beats_base_rate"],
+                    "evaluation": {"eval.test_log_loss": "0.685", "eval.test_roc_auc": "0.51"},
+                },
+                created_at=later,
+            )
+        )
+        conn.execute(
+            insert(MonitoringReport),
+            [
+                {
+                    "report_type": "data_drift",
+                    "model_name": model_name,
+                    "model_version": "7",
+                    "window_start": later - timedelta(hours=24),
+                    "window_end": later,
+                    "metric_name": "psi",
+                    "feature_name": feature,
+                    "value": value,
+                    "threshold": 0.25,
+                    "status": status,
+                    "details": {"n": 500},
+                    "created_at": later,
+                }
+                for feature, value, status in (("ret_5", 0.4, "alert"), ("rsi_14", 0.02, "ok"))
+            ],
+        )
+
+    predictions = client.get(f"/api/v1/stocks/{seeded}/predictions").json()["items"]
+    assert predictions[0]["outcome"]["actual_direction"] == "down"
+    assert predictions[0]["outcome"]["is_correct"] is False
+
+    model = client.get("/api/v1/model").json()
+    assert (model["name"], model["version"]) == (model_name, "7")
+    assert model["overridden_gates"] == ["beats_base_rate"]
+    assert model["evaluation"] == {"test_log_loss": 0.685, "test_roc_auc": 0.51}
+
+    summary = client.get("/api/v1/monitoring").json()
+    assert summary["model_version"] == "7"
+    assert summary["status_counts"] == {"ok": 1, "warning": 0, "alert": 1}
+    assert summary["retrain_recommended"] is False
+
+    status = client.get("/api/v1/status").json()
+    assert status["stores"] == {"postgres": "ok", "redis": "ok"}
+    assert status["market_data"]["status"] == "ok"
+    assert status["predictions"]["status"] == "ok"
+    assert status["model"]["version"] == "7"
+    assert status["active_symbols"] >= 1

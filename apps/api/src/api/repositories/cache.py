@@ -45,6 +45,15 @@ class CacheRepository:
         raw = await self._client.hget(cache.latest_prediction_key(symbol), "data")
         return json.loads(raw) if raw else None
 
+    async def latest_predictions(self, symbols: Sequence[str]) -> dict[str, Payload]:
+        if not symbols:
+            return {}
+        pipe = self._client.pipeline(transaction=False)
+        for symbol in symbols:
+            pipe.hget(cache.latest_prediction_key(symbol), "data")
+        values = await pipe.execute()
+        return {s: json.loads(v) for s, v in zip(symbols, values, strict=True) if v}
+
     async def recent_anomalies(self, symbol: str | None, limit: int) -> list[Payload]:
         key = cache.RECENT_ANOMALIES if symbol is None else cache.symbol_anomalies_key(symbol)
         members = await self._client.zrevrange(key, 0, limit - 1)

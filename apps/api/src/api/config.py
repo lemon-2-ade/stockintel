@@ -22,6 +22,8 @@ class ApiSettings(BaseSettings):
     default_user_id: str = "default"
     history_max_limit: int = Field(default=5_000, ge=1, le=50_000)
     stale_after_bars: int = Field(default=5, ge=1)
+    # The monitor runs every 5 min by default; flag it after two missed runs.
+    monitor_stale_after_s: float = Field(default=900.0, gt=0)
     # WebSocket
     ws_flush_interval_ms: int = Field(default=250, ge=20, le=10_000)
     ws_heartbeat_s: float = Field(default=15.0, gt=0)

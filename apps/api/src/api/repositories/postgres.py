@@ -14,7 +14,10 @@ from shared.db.models import (
     Anomaly,
     BarIndicators,
     MarketBar,
+    ModelDeployment,
+    MonitoringReport,
     Prediction,
+    PredictionOutcome,
     Symbol,
     WatchlistItem,
 )
@@ -137,7 +140,20 @@ class MarketRepository:
         return await self._all(query.order_by(Anomaly.ts.desc()).limit(limit))
 
     async def predictions(self, symbol: str, *, before: datetime | None, limit: int) -> list[Row]:
-        query = select(Prediction).where(Prediction.symbol == symbol)
+        """Predictions with their outcome columns (null until resolved)."""
+        query = (
+            select(
+                Prediction,
+                PredictionOutcome.actual_direction,
+                PredictionOutcome.actual_return,
+                PredictionOutcome.is_correct,
+                PredictionOutcome.resolved_at,
+            )
+            .outerjoin(
+                PredictionOutcome, PredictionOutcome.prediction_id == Prediction.prediction_id
+            )
+            .where(Prediction.symbol == symbol)
+        )
         if before is not None:
             query = query.where(Prediction.ts < before)
         return await self._all(query.order_by(Prediction.ts.desc()).limit(limit))
@@ -148,6 +164,39 @@ class MarketRepository:
             select(Prediction)
             .where(Prediction.symbol == symbol, Prediction.target_ts > now)
             .order_by(Prediction.ts.desc())
+        )
+
+    # ------------------------------------------------------------- ML status
+    async def champion(self) -> Row | None:
+        """Latest promotion to champion, unless that version was archived since."""
+        row = await self._one(
+            select(ModelDeployment)
+            .where(ModelDeployment.to_stage == "champion")
+            .order_by(ModelDeployment.created_at.desc(), ModelDeployment.id.desc())
+        )
+        if row is None:
+            return None
+        archived = await self._one(
+            select(ModelDeployment.id).where(
+                ModelDeployment.model_name == row["model_name"],
+                ModelDeployment.model_version == row["model_version"],
+                ModelDeployment.to_stage == "archived",
+                ModelDeployment.id > row["id"],
+            )
+        )
+        return None if archived else row
+
+    async def latest_monitoring(self) -> list[Row]:
+        """All reports of the most recent monitor cycle (one insert = one created_at)."""
+        latest = select(func.max(MonitoringReport.created_at)).scalar_subquery()
+        return await self._all(
+            select(MonitoringReport)
+            .where(MonitoringReport.created_at == latest)
+            .order_by(
+                MonitoringReport.report_type,
+                MonitoringReport.metric_name,
+                MonitoringReport.feature_name,
+            )
         )
 
     # ------------------------------------------------------------- watchlist

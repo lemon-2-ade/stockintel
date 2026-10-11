@@ -13,7 +13,7 @@ never mistake one for another:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -77,6 +77,15 @@ class SessionStats(ApiModel):
     bars: int
 
 
+class PredictionOutcome(ApiModel):
+    """What actually happened over the prediction's horizon (once known)."""
+
+    actual_direction: Direction
+    actual_return: float = Field(description="ln(close at target / close at as-of)")
+    is_correct: bool | None = Field(description="null when the realised return was exactly 0")
+    resolved_at: datetime
+
+
 class Prediction(ApiModel):
     kind: Literal["model_estimate"] = "model_estimate"
     prediction_id: UUID
@@ -90,6 +99,9 @@ class Prediction(ApiModel):
     confidence: float | None = None
     model_name: str
     model_version: str
+    outcome: PredictionOutcome | None = Field(
+        default=None, description="Realised result; null until the target time has passed"
+    )
     disclaimer: str = PREDICTION_DISCLAIMER
 
 
@@ -157,3 +169,67 @@ class Health(ApiModel):
 class Readiness(ApiModel):
     status: Literal["ready", "degraded", "unavailable"]
     checks: dict[str, str]
+
+
+class ModelStatus(ApiModel):
+    """The model currently promoted to champion, from the promotion audit log."""
+
+    name: str
+    version: str
+    stage: Literal["champion"] = "champion"
+    promoted_at: datetime
+    promoted_by: str
+    reason: str
+    overridden_gates: list[str] = Field(
+        description="Quality gates that failed and were explicitly overridden at promotion"
+    )
+    evaluation: dict[str, float] = Field(
+        description="Held-out evaluation recorded with the version (log loss vs base-rate "
+        "forecast, ROC-AUC, accuracy, base rate)"
+    )
+    disclaimer: str = PREDICTION_DISCLAIMER
+
+
+class MonitoringItem(ApiModel):
+    report_type: Literal[
+        "data_quality", "data_drift", "prediction_drift", "performance", "operational"
+    ]
+    metric: str
+    feature: str | None = None
+    value: float
+    threshold: float | None = None
+    status: Literal["ok", "warning", "alert"]
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class MonitoringSummary(ApiModel):
+    """The most recent model-monitor cycle."""
+
+    model_name: str | None
+    model_version: str | None
+    window_start: datetime
+    window_end: datetime
+    computed_at: datetime
+    status_counts: dict[str, int]
+    retrain_recommended: bool
+    items: list[MonitoringItem]
+
+
+class StageStatus(ApiModel):
+    status: Literal["ok", "stale", "missing"]
+    latest_at: datetime | None = None
+    age_seconds: float | None = None
+    detail: str | None = None
+
+
+class PipelineStatus(ApiModel):
+    """End-to-end health as seen from the API: stores, data freshness, ML path."""
+
+    checked_at: datetime
+    stores: dict[str, str]
+    market_data: StageStatus
+    predictions: StageStatus
+    monitoring: StageStatus
+    model: ModelStatus | None
+    active_symbols: int
+    stale_symbols: list[str]

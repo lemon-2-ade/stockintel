@@ -26,9 +26,15 @@ from api.schemas import (
     Freshness,
     History,
     IndicatorPoint,
+    ModelStatus,
+    MonitoringItem,
+    MonitoringSummary,
     Page,
+    PipelineStatus,
     Prediction,
+    PredictionOutcome,
     SessionStats,
+    StageStatus,
     StockDetail,
     StockSummary,
     WatchlistItem,
@@ -84,6 +90,17 @@ def _anomaly(source: Mapping[str, Any]) -> Anomaly:
     )
 
 
+def _outcome(source: Mapping[str, Any]) -> PredictionOutcome | None:
+    if source.get("actual_direction") is None:
+        return None
+    return PredictionOutcome(
+        actual_direction=source["actual_direction"],
+        actual_return=source["actual_return"],
+        is_correct=source.get("is_correct"),
+        resolved_at=source["resolved_at"],
+    )
+
+
 def _prediction(source: Mapping[str, Any]) -> Prediction:
     return Prediction(
         prediction_id=source["prediction_id"],
@@ -97,6 +114,26 @@ def _prediction(source: Mapping[str, Any]) -> Prediction:
         confidence=source.get("confidence"),
         model_name=source["model_name"],
         model_version=source["model_version"],
+        outcome=_outcome(source),
+    )
+
+
+def _model_status(row: Mapping[str, Any]) -> ModelStatus:
+    metrics: Mapping[str, Any] = row.get("metrics") or {}
+    evaluation = {}
+    for key, value in (metrics.get("evaluation") or {}).items():
+        try:
+            evaluation[str(key).removeprefix("eval.")] = float(value)
+        except (TypeError, ValueError):
+            continue
+    return ModelStatus(
+        name=row["model_name"],
+        version=row["model_version"],
+        promoted_at=row["created_at"],
+        promoted_by=row["actor"],
+        reason=row["reason"],
+        overridden_gates=list(metrics.get("overridden_gates") or []),
+        evaluation=evaluation,
     )
 
 
@@ -384,6 +421,109 @@ class MarketService:
             {"type": "bar", "symbol": symbol, "data": payload}
             for symbol, payload in (latest or {}).items()
         ]
+
+    # ------------------------------------------------------------- ML + pipeline status
+    async def model_status(self) -> ModelStatus | None:
+        row = await self._from_db(self._db.champion, "champion")
+        return _model_status(row) if row else None
+
+    async def monitoring(self) -> MonitoringSummary | None:
+        rows = await self._from_db(self._db.latest_monitoring, "monitoring")
+        if not rows:
+            return None
+        items = [
+            MonitoringItem(
+                report_type=r["report_type"],
+                metric=r["metric_name"],
+                feature=r["feature_name"],
+                value=r["value"],
+                threshold=r["threshold"],
+                status=r["status"],
+                details=r["details"] or {},
+            )
+            for r in rows
+        ]
+        counts = {
+            status: sum(i.status == status for i in items) for status in ("ok", "warning", "alert")
+        }
+        first = rows[0]
+        return MonitoringSummary(
+            model_name=first["model_name"],
+            model_version=first["model_version"],
+            window_start=first["window_start"],
+            window_end=first["window_end"],
+            computed_at=first["created_at"],
+            status_counts=counts,
+            retrain_recommended=any(i.metric == "retrain_recommended" for i in items),
+            items=items,
+        )
+
+    def _stage(self, latest: datetime | None, stale_after_s: float, what: str) -> StageStatus:
+        if latest is None:
+            return StageStatus(status="missing", detail=f"no {what} yet")
+        age = (self._clock() - latest).total_seconds()
+        return StageStatus(
+            status="stale" if age > stale_after_s else "ok",
+            latest_at=latest,
+            age_seconds=round(age, 3),
+        )
+
+    async def pipeline_status(self, *, monitor_stale_after_s: float) -> PipelineStatus:
+        """Freshness of each stage: live data from the cache, ML records from the database.
+
+        A stage is ``stale`` when its newest record is older than a few bar
+        intervals (market data, predictions) or than the monitor's schedule.
+        """
+        stores = await self.readiness()
+        try:
+            stocks = await self.list_stocks()
+        except ServiceUnavailableError:
+            stocks = []
+        live = [s for s in stocks if s.timestamp is not None]
+        interval = BarInterval.S1
+        if live:
+            interval = await self._latest_interval(live[0].symbol) or interval
+        bar_limit = max(self._stale_after_bars * interval.duration.total_seconds(), 10.0)
+        latest_bar = max(
+            (s.timestamp + interval.duration for s in live if s.timestamp), default=None
+        )
+
+        cached = await self._from_cache(
+            lambda: self._cache.latest_predictions([s.symbol for s in live]), "latest_predictions"
+        )
+        prediction_times = [
+            datetime.fromisoformat(p["timestamp"]) + interval.duration
+            for p in (cached or {}).values()
+            if p.get("timestamp")
+        ]
+        latest_prediction = max(prediction_times, default=None)
+
+        model: ModelStatus | None = None
+        summary: MonitoringSummary | None = None
+        try:
+            model = await self.model_status()
+            summary = await self.monitoring()
+        except ServiceUnavailableError:
+            pass
+        return PipelineStatus(
+            checked_at=self._clock(),
+            stores=stores,
+            market_data=self._stage(latest_bar, bar_limit, "market data"),
+            # Predictions need a 61-bar warm-up and a served model; allow more slack.
+            predictions=self._stage(
+                latest_prediction, 2 * bar_limit, "recent predictions in the live cache"
+            ),
+            monitoring=self._stage(
+                summary.computed_at if summary else None, monitor_stale_after_s, "monitor run"
+            ),
+            model=model,
+            active_symbols=len(live),
+            stale_symbols=sorted(s.symbol for s in live if s.stale),
+        )
+
+    async def _latest_interval(self, symbol: str) -> BarInterval | None:
+        payload = await self._from_cache(lambda: self._cache.latest_bar(symbol), "latest_bar")
+        return BarInterval(payload["interval"]) if payload else None
 
     # ------------------------------------------------------------- readiness
     async def readiness(self) -> dict[str, str]:

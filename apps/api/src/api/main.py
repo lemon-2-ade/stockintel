@@ -14,7 +14,7 @@ from api.errors import install_error_handlers
 from api.live import LiveHub
 from api.metrics import ApiMetrics
 from api.middleware import RateLimitMiddleware, RequestContextMiddleware, TokenBucketLimiter
-from api.routers import health, stocks, watchlist, ws
+from api.routers import health, ml, stocks, watchlist, ws
 from api.service import MarketService
 from shared.config import LogSettings, PostgresSettings, RedisSettings
 from shared.observability.logs import configure_logging, get_logger
@@ -90,6 +90,7 @@ def create_app(
     app.include_router(health.router)
     app.include_router(stocks.router)
     app.include_router(watchlist.router)
+    app.include_router(ml.router)
     app.include_router(ws.router)
 
     # Order: the last added runs first. Request context wraps everything.
