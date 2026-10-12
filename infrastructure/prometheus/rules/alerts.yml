@@ -1,0 +1,150 @@
+# Alert rules. Thresholds are starting points chosen for the local/demo load,
+# not tuned values: see docs/OBSERVABILITY.md for the reasoning and how to
+# retune. Unit tests: infrastructure/prometheus/tests (`make prometheus-test`).
+groups:
+  - name: availability
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.job }} ({{ $labels.instance }}) is not scrapeable"
+          description: Prometheus could not scrape /metrics for 2 minutes.
+
+  - name: ingestion
+    rules:
+      - alert: MarketDataStalled
+        expr: time() - max(sip_producer_last_delivery_timestamp_seconds) > 120
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: No market event has been acknowledged by Kafka for over 2 minutes
+          description: The producer is up but nothing is being delivered (or it is paused on purpose).
+      - alert: ProducerDeliveryFailures
+        expr: sum(increase(sip_producer_delivery_failures_total[5m])) > 0
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: Events could not be delivered to Kafka
+          description: "{{ $value | printf \"%.0f\" }} events failed delivery in the last 5 minutes."
+      - alert: ProducerBackpressure
+        expr: sum(increase(sip_producer_buffer_full_total[5m])) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: The producer's local queue keeps filling up
+          description: Kafka is acknowledging slower than the producer generates.
+
+  - name: pipeline
+    rules:
+      - alert: ConsumerLagHigh
+        expr: sum by (group) (sip_kafka_group_lag) > 10000
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Consumer group {{ $labels.group }} is {{ $value | printf \"%.0f\" }} messages behind"
+          description: Lag stayed above 10k messages for 5 minutes (about 14 minutes of the default 12-symbol 1s feed).
+      - alert: ConsumerLagNotDraining
+        expr: |
+          sum by (group) (sip_kafka_group_lag) > 1000
+          and
+          sum by (group) (delta(sip_kafka_group_committed_offset[10m])) <= 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Consumer group {{ $labels.group }} has lag and is not committing"
+          description: The group is stuck or dead, not just slow.
+      - alert: LagExporterBlind
+        expr: sip_kafka_exporter_up == 0 or time() - sip_kafka_exporter_last_success_timestamp_seconds > 120
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: The Kafka lag exporter cannot read from the broker
+          description: Lag alerts are not trustworthy while this fires.
+      - alert: DeadLetteredMessages
+        expr: sum by (job) (increase({__name__=~"sip_(stream|sink)_dead_lettered_total"}[10m])) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.job }} sent messages to the dead-letter topic"
+          description: Inspect market.dead-letter; every entry carries a reason and the original payload.
+      - alert: StreamProcessorErrors
+        expr: sum(rate(sip_stream_messages_total{outcome=~"error|invalid"}[5m])) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: The stream processor is rejecting or failing on input
+          description: Outcome error/invalid has been non-zero for 5 minutes.
+      - alert: SinkWritesSlow
+        expr: |
+          histogram_quantile(0.99, sum by (job, le) (rate(sip_sink_batch_write_seconds_bucket[5m]))) > 5
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.job }} p99 batch write time is {{ $value | printf \"%.1f\" }}s"
+          description: Storage is slow; consumer lag will follow.
+
+  - name: api
+    rules:
+      - alert: ApiHighErrorRate
+        expr: |
+          sum(rate(sip_api_requests_total{status=~"5.."}[5m]))
+            / sum(rate(sip_api_requests_total[5m])) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: More than 5% of API requests fail with 5xx
+          description: "Error ratio {{ $value | humanizePercentage }}."
+      - alert: ApiSlow
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(sip_api_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: API p95 latency is above 1 second
+          description: "p95 {{ $value | printf \"%.2f\" }}s over 5 minutes."
+
+  - name: model
+    rules:
+      - alert: InferenceUnavailable
+        expr: |
+          sum(rate(sip_inference_requests_total{outcome="unavailable"}[5m])) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: The inference service has no usable model
+          description: Requests return 503. Market data is unaffected; predictions stop.
+      - alert: ModelLoadFailing
+        expr: increase(sip_inference_model_load_failures_total[15m]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: The inference service failed to load or validate a model
+          description: The previously served model stays active.
+      - alert: PredictionsSkipped
+        expr: sum by (reason) (rate(sip_pipeline_predictions_skipped_total[5m])) > 0
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Ready bars get no prediction (reason: {{ $labels.reason }})"
+          description: The pipeline degrades by skipping, not by blocking; check the inference service.
+      - alert: ModelMonitorNotRunning
+        expr: sum(increase(sip_monitor_runs_total{result="ok"}[30m])) == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: The model monitor has not completed a cycle in 30 minutes
+          description: Drift and performance checks are not being refreshed.
+      - alert: ModelPerformanceAlert
+        expr: max(sip_monitor_status{report_type="performance"}) >= 2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: Live model performance is in alert state
+          description: See the dashboard; retraining only produces a candidate that needs audited promotion.
+      - alert: BroadInputDrift
+        expr: count(sip_monitor_status{report_type="data_drift"} >= 2) >= 10
+        for: 15m
+        labels: {severity: info}
+        annotations:
+          summary: "{{ $value }} model inputs have drifted from the training reference"
+          description: Expected when serving intraday or simulated bars to a daily model; otherwise a real distribution shift.

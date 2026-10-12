@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 10 of 14 complete** (architecture, contracts,
+> **Project status: Phase 11 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow, and the React dashboard). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow, the React dashboard, and observability: scrape config, Kafka lag exporter, Grafana dashboards and promtool-tested alerts). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -178,8 +178,7 @@ Full diagrams, component responsibilities and design decisions:
 └── .env.example
 ```
 
-Planned additions, each in the phase that implements it: Grafana dashboards and
-alert rules (Phase 11), load tests (Phase 12), `.github/workflows/` and optional
+Planned additions, each in the phase that implements it: load tests (Phase 12), `.github/workflows/` and optional
 `infrastructure/terraform` (Phase 13).
 
 ## Getting started

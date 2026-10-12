@@ -171,3 +171,12 @@ frontend-build: ## Production build of the dashboard -> apps/frontend/dist
 
 demo-feed: ## Live simulated data into Postgres/Redis without Kafka (needs API stores + inference)
 	$(UV_RUN) python scripts/demo_feed.py --monitor-every 60
+
+.PHONY: prometheus-test dashboards
+prometheus-test: ## Validate Prometheus config + rules and run the alert unit tests (needs promtool)
+	promtool check config infrastructure/prometheus/prometheus.yml
+	promtool check rules infrastructure/prometheus/rules/alerts.yml
+	promtool test rules infrastructure/prometheus/tests/alerts_test.yml
+
+dashboards: ## Regenerate Grafana dashboards from scripts/gen_dashboards.py
+	uv run python scripts/gen_dashboards.py

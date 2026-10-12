@@ -351,6 +351,29 @@ services:
     logging: *logging
     restart: unless-stopped
 
+  # Broker-side consumer-group lag (the sinks export none themselves, and a
+  # dead consumer cannot report its own lag). Runs from the sinks image.
+  kafka-lag-exporter:
+    image: stockintel/sinks:dev
+    command: ["python", "-m", "shared.observability.kafka_lag"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LAG_EXPORTER_PORT: "8006"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      sink-postgres:
+        condition: service_started  # shares the image built by sink-postgres
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8006/metrics', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging: *logging
+    restart: unless-stopped
+
   # Stateless: scale with `--scale api=N` behind a load balancer (Phase 13).
   api:
     image: stockintel/api:dev

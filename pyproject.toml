@@ -78,6 +78,7 @@ ignore = [
 "**/tests/**" = ["S101", "PLR2004", "S311"]
 "tests/**" = ["S101", "PLR2004", "S311"]
 "**/migrations/versions/*.py" = ["E501"]
+"scripts/gen_dashboards.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["shared", "stockml", "market_producer", "stream_processor", "sinks", "api", "inference", "prediction_pipeline", "model_monitor"]

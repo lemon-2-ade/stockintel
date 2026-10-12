@@ -1,0 +1,201 @@
+rule_files:
+  - ../rules/alerts.yml
+evaluation_interval: 1m
+
+tests:
+  - name: target down fires after 2m
+    interval: 1m
+    input_series:
+      - series: 'up{job="api",instance="api:8000"}'
+        values: "1 1 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: TargetDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: TargetDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: api, instance: "api:8000"}
+            exp_annotations:
+              summary: "api (api:8000) is not scrapeable"
+              description: Prometheus could not scrape /metrics for 2 minutes.
+
+  - name: market data stall
+    interval: 1m
+    input_series:
+      - series: "sip_producer_last_delivery_timestamp_seconds"
+        values: "0 60 120 120 120 120 120 120"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: MarketDataStalled
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: MarketDataStalled
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: No market event has been acknowledged by Kafka for over 2 minutes
+              description: The producer is up but nothing is being delivered (or it is paused on purpose).
+
+  - name: lag high needs to persist, and a stuck group is critical
+    interval: 1m
+    input_series:
+      - series: 'sip_kafka_group_lag{group="persistence",topic="market.raw",partition="0"}'
+        values: "0 20000 20000 20000 20000 20000 20000 20000 20000 20000 20000 20000"
+      - series: 'sip_kafka_group_committed_offset{group="persistence",topic="market.raw",partition="0"}'
+        values: "100 100 100 100 100 100 100 100 100 100 100 100"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ConsumerLagHigh
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: ConsumerLagHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, group: persistence}
+            exp_annotations:
+              summary: "Consumer group persistence is 20000 messages behind"
+              description: Lag stayed above 10k messages for 5 minutes (about 14 minutes of the default 12-symbol 1s feed).
+      - eval_time: 11m
+        alertname: ConsumerLagNotDraining
+        exp_alerts:
+          - exp_labels: {severity: critical, group: persistence}
+            exp_annotations:
+              summary: "Consumer group persistence has lag and is not committing"
+              description: The group is stuck or dead, not just slow.
+
+  - name: lag that is draining does not page
+    interval: 1m
+    input_series:
+      - series: 'sip_kafka_group_lag{group="cache",topic="market.raw",partition="0"}'
+        values: "5000+0x15"
+      - series: 'sip_kafka_group_committed_offset{group="cache",topic="market.raw",partition="0"}'
+        values: "0+500x15"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: ConsumerLagNotDraining
+        exp_alerts: []
+
+  - name: dead letters fire immediately
+    interval: 1m
+    input_series:
+      - series: 'sip_sink_dead_lettered_total{job="sinks",instance="sink-postgres:8003",reason="poison"}'
+        values: "0 0 0 3 3 3"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DeadLetteredMessages
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: DeadLetteredMessages
+        exp_alerts:
+          - exp_labels: {severity: warning, job: sinks}
+            exp_annotations:
+              summary: "sinks sent messages to the dead-letter topic"
+              description: Inspect market.dead-letter; every entry carries a reason and the original payload.
+
+  - name: api error ratio
+    interval: 1m
+    input_series:
+      - series: 'sip_api_requests_total{method="GET",route="/x",status="200"}'
+        values: "0+90x12"
+      - series: 'sip_api_requests_total{method="GET",route="/x",status="500"}'
+        values: "0+10x12"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ApiHighErrorRate
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: More than 5% of API requests fail with 5xx
+              description: "Error ratio 10%."
+
+  - name: healthy api is quiet
+    interval: 1m
+    input_series:
+      - series: 'sip_api_requests_total{method="GET",route="/x",status="200"}'
+        values: "0+100x12"
+      - series: 'sip_api_requests_total{method="GET",route="/x",status="500"}'
+        values: "0+1x12"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ApiHighErrorRate
+        exp_alerts: []
+
+  - name: inference unavailable and skipped predictions
+    interval: 1m
+    input_series:
+      - series: 'sip_inference_requests_total{outcome="unavailable"}'
+        values: "0+5x15"
+      - series: 'sip_pipeline_predictions_skipped_total{reason="unavailable"}'
+        values: "0+5x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: InferenceUnavailable
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: InferenceUnavailable
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: The inference service has no usable model
+              description: Requests return 503. Market data is unaffected; predictions stop.
+      - eval_time: 15m
+        alertname: PredictionsSkipped
+        exp_alerts:
+          - exp_labels: {severity: warning, reason: unavailable}
+            exp_annotations:
+              summary: "Ready bars get no prediction (reason: unavailable)"
+              description: The pipeline degrades by skipping, not by blocking; check the inference service.
+
+  - name: monitor stopped
+    interval: 5m
+    input_series:
+      - series: 'sip_monitor_runs_total{result="ok"}'
+        values: "1 2 3 3 3 3 3 3 3 3"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ModelMonitorNotRunning
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ModelMonitorNotRunning
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: The model monitor has not completed a cycle in 30 minutes
+              description: Drift and performance checks are not being refreshed.
+
+  - name: broad drift is info, performance alert is a warning
+    interval: 1m
+    input_series:
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f1"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f2"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f3"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f4"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f5"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f6"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f7"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f8"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f9"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="data_drift",metric="psi",feature="f10"}'
+        values: "2+0x30"
+      - series: 'sip_monitor_status{report_type="performance",metric="log_loss_minus_null",feature=""}'
+        values: "0+0x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BroadInputDrift
+        exp_alerts:
+          - exp_labels: {severity: info}
+            exp_annotations:
+              summary: "10 model inputs have drifted from the training reference"
+              description: Expected when serving intraday or simulated bars to a daily model; otherwise a real distribution shift.
+      - eval_time: 20m
+        alertname: ModelPerformanceAlert
+        exp_alerts: []

@@ -16,7 +16,7 @@ done; nothing is claimed that has not been run.
 | 8 | MLflow tracking + registry (candidate/challenger/champion aliases), explicit promotion CLI with audit log, inference service | model loads from registry; `/predict` contract tests; latency measured | done |
 | 9 | Prediction streaming, outcome resolution, drift (PSI/KS), performance monitoring, alerts, retraining workflow that produces a *candidate* only | monitor detects synthetic drift in a test; no auto-promotion path exists | done |
 | 10 | React + TS + Tailwind dashboard: candlesticks + volume + overlays, indicators, ML panel, anomaly feed, watchlist, pipeline status, themes | component tests; manual QA checklist; screenshots | **done** |
-| 11 | Prometheus metrics across services, Kafka lag exporter, Grafana dashboards, alert rules | dashboards provisioned from code; alert rules unit-tested with promtool | next |
+| 11 | Prometheus metrics across services, Kafka lag exporter, Grafana dashboards, alert rules | dashboards provisioned from code; alert rules unit-tested with promtool | **done** ([OBSERVABILITY.md](OBSERVABILITY.md)) |
 | 12 | Load tests (Kafka producer benchmark, Locust/k6 for API), end-to-end latency, failure-injection tests, `PERFORMANCE.md` with measured results | reproducible benchmark scripts + raw results committed | |
 | 13 | GitHub Actions (lint, types, tests, frontend, image builds, integration stage with compose), dependency/secret scanning, optional Terraform for AWS | green pipeline on PR and main | |
 | 14 | Final documentation, diagrams, screenshots, limitations and future work | README complete; every number in docs traceable to a script | |
