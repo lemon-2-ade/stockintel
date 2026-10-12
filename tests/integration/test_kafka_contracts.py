@@ -16,7 +16,7 @@ from factories import make_bar
 from shared.config import KafkaSettings
 from shared.kafka.client_config import admin_config, consumer_config, producer_config
 from shared.kafka.provision import TopicProvisioner, plan
-from shared.kafka.serde import HEADER_EVENT_TYPE, JsonEventSerde
+from shared.kafka.serde import HEADER_EVENT_TYPE, EventDeserializationError, JsonEventSerde
 from shared.kafka.topics import TOPICS, Topic
 from shared.schemas import MarketBarEvent
 
@@ -82,7 +82,10 @@ def test_round_trip_preserves_events_and_per_symbol_partitioning(
             msg = consumer.poll(1.0)
             if msg is None or msg.error():
                 continue
-            event = serde.deserialize(msg.value(), MarketBarEvent)
+            try:
+                event = serde.deserialize(msg.value(), MarketBarEvent)
+            except EventDeserializationError:
+                continue  # other tests publish poison messages to the shared topic
             if event.trace_id and event.trace_id.startswith(run):
                 assert dict(msg.headers())[HEADER_EVENT_TYPE] == b"market.bar"
                 received[str(event.event_id)] = (event, msg.partition())

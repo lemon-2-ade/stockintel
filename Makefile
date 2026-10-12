@@ -180,3 +180,16 @@ prometheus-test: ## Validate Prometheus config + rules and run the alert unit te
 
 dashboards: ## Regenerate Grafana dashboards from scripts/gen_dashboards.py
 	uv run python scripts/gen_dashboards.py
+
+.PHONY: bench-produce bench-e2e loadtest-api bench-summary
+bench-produce: ## Kafka producer throughput (scratch topic)
+	uv run python scripts/bench_pipeline.py produce --n 200000
+
+bench-e2e: ## End-to-end latency through the running stream processor
+	uv run python scripts/bench_pipeline.py e2e --rate 1000 --duration 30
+
+loadtest-api: ## Locust against the API (start it with a high API_RATE_LIMIT_PER_S first)
+	uv run --group loadtest locust -f loadtests/locustfile.py --headless --host http://localhost:8000 -u 50 -r 20 -t 45s DashboardUser
+
+bench-summary: ## Regenerate the tables in docs/PERFORMANCE.md from docs/benchmarks/
+	uv run python scripts/summarize_benchmarks.py

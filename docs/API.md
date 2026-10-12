@@ -172,5 +172,6 @@ coalesced (fewer than five updates) with the latest close preserved.
   seeded through the sinks (listing, detail, pagination, anomalies,
   predictions, watchlist lifecycle, Redis outage falling back to Postgres,
   route-template metrics, live WebSocket updates, origin rejection).
-- The Kafka side of the sinks is covered by the runner's unit tests; a
-  Kafka round trip awaits a live broker (`make dev && make test-integration`).
+- The Kafka side of the sinks is covered by the runner's unit tests. The
+  broker-level integration tests (topics, producer, stream processor) ran
+  against a live broker in Phase 12; a sinks-through-Kafka round trip has not.

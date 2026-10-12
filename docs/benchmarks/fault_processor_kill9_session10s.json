@@ -1,0 +1,102 @@
+{
+  "benchmark": "end_to_end_latency",
+  "host": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+    "cpus": 2,
+    "bootstrap_servers": "localhost:9094",
+    "measured_at": "2026-10-12T13:18:02+00:00"
+  },
+  "config": {
+    "rate_per_s": 200.0,
+    "duration_s": 40.0,
+    "symbols": 12,
+    "fault_cmd": "/tmp/claude-0/run/kill9_sp.sh",
+    "recover_cmd": "/tmp/claude-0/run/start_sp.sh"
+  },
+  "fault_marks": {
+    "fault_at_s": 10.0,
+    "fault_exit_code": 0,
+    "fault_done_s": 10.014,
+    "recover_at_s": 20.0,
+    "recover_exit_code": 0,
+    "recover_done_s": 20.006
+  },
+  "results": {
+    "sent": 8000,
+    "received_distinct": 8000,
+    "missing": 0,
+    "duplicates": 57,
+    "out_of_order_per_symbol": 12,
+    "send_duration_s": 39.996,
+    "achieved_send_rate": 200.0,
+    "send_schedule_slip_ms_p99": 29.042,
+    "end_to_end_latency": {
+      "n": 8000,
+      "mean_ms": 1614.578,
+      "p50_ms": 49.506,
+      "p90_ms": 7179.739,
+      "p95_ms": 9174.918,
+      "p99_ms": 10805.466,
+      "max_ms": 11695.374
+    },
+    "processor_reported_latency": {
+      "n": 8057,
+      "mean_ms": 1678.943,
+      "p50_ms": 46.483,
+      "p90_ms": 7436.29,
+      "p95_ms": 9440.124,
+      "p99_ms": 11075.447,
+      "max_ms": 11948.466
+    },
+    "max_arrival_gap_s": 10.608,
+    "arrivals_per_second": [
+      192,
+      200,
+      199,
+      204,
+      199,
+      200,
+      197,
+      199,
+      208,
+      192,
+      11,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      520,
+      1874,
+      200,
+      197,
+      199,
+      206,
+      200,
+      198,
+      204,
+      198,
+      196,
+      198,
+      198,
+      209,
+      196,
+      195,
+      201,
+      209,
+      198,
+      198,
+      5
+    ],
+    "first_enriched_after_recovery_s": 0.619
+  },
+  "notes": [
+    "latency = just before produce() of the raw bar to arrival of its enriched event",
+    "kafka-to-kafka only: sinks, Redis and the API are not in the path"
+  ]
+}

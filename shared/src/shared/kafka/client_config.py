@@ -71,7 +71,10 @@ def consumer_config(
         "auto.offset.reset": "earliest",
         # Incremental rebalancing: scaling a group does not stop every member.
         "partition.assignment.strategy": "cooperative-sticky",
-        "session.timeout.ms": 45_000,
+        # How long a crashed (SIGKILLed) member blocks its partitions. 45 s measured
+        # as ~41 s of stalled output after a kill -9 (docs/PERFORMANCE.md); 10 s trades
+        # that for more tolerance of false rebalances on long GC/network pauses.
+        "session.timeout.ms": 10_000,
         "max.poll.interval.ms": 300_000,
         "isolation.level": "read_committed",
     }

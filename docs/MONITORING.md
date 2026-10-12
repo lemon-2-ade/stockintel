@@ -154,10 +154,11 @@ numbers above are after the fix.
 ## Limitations
 
 * The Kafka path of the pipeline is covered by unit tests with fake
-  consumers and producers; it has not run against a broker in this
-  environment (no Docker daemon). The simulation above bypasses Kafka.
+  consumers and producers; the prediction pipeline and monitor have not run against a broker
+  (only the stream processor and producer have, in Phase 12; no Docker daemon). The simulation above bypasses Kafka.
 * Alerts are rows, log lines and metrics; routing them to people (Prometheus
-  alert rules, Alertmanager) is Phase 11.
+  alert rules, Alertmanager) is partly done: Prometheus rules exist (Phase 11,
+  OBSERVABILITY.md), Alertmanager routing is not configured.
 * PSI with 10 bins is a coarse, sample-size-blind measure; it is paired with
   KS and a minimum sample, but thresholds are conventions, not calibrated
   error rates.

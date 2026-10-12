@@ -7,6 +7,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -127,3 +128,13 @@ def test_promtool_rules() -> None:
         [PROMTOOL, "test", "rules", str(tests)], capture_output=True, text=True, check=False
     )
     assert out.returncode == 0, out.stdout + out.stderr
+
+
+def test_performance_doc_matches_raw_results() -> None:
+    out = subprocess.run(  # noqa: S603
+        [sys.executable, str(ROOT / "scripts" / "summarize_benchmarks.py"), "--check"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert out.returncode == 0, out.stderr

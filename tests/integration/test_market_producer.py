@@ -18,7 +18,7 @@ from market_producer.runtime import ProducerRuntime
 from market_producer.simulator import AnomalyConfig, MarketSimulator, SymbolSimulator
 from shared.config import KafkaSettings
 from shared.kafka.client_config import consumer_config, producer_config
-from shared.kafka.serde import JsonEventSerde
+from shared.kafka.serde import EventDeserializationError, JsonEventSerde
 from shared.kafka.topics import Topic
 from shared.schemas import BarInterval, MarketBarEvent
 
@@ -69,7 +69,10 @@ def test_simulated_bars_reach_kafka_intact(kafka_settings: KafkaSettings) -> Non
             msg = consumer.poll(1.0)
             if msg is None or msg.error():
                 continue
-            event = serde.deserialize(msg.value(), MarketBarEvent)
+            try:
+                event = serde.deserialize(msg.value(), MarketBarEvent)
+            except EventDeserializationError:
+                continue  # other tests publish poison messages to the shared topic
             if event.symbol in received:
                 assert msg.key() == event.symbol.encode()
                 received[event.symbol].append(event)

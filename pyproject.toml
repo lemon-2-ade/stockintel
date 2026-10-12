@@ -29,6 +29,9 @@ dev = [
     "pandas-stubs>=2.2",
     "httpx2>=2.0",
 ]
+loadtest = [
+    "locust>=2.46.7",
+]
 
 [tool.uv]
 package = false
@@ -79,6 +82,7 @@ ignore = [
 "tests/**" = ["S101", "PLR2004", "S311"]
 "**/migrations/versions/*.py" = ["E501"]
 "scripts/gen_dashboards.py" = ["E501"]
+"scripts/bench_pipeline.py" = ["E501", "PLR0912", "PLR0915"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["shared", "stockml", "market_producer", "stream_processor", "sinks", "api", "inference", "prediction_pipeline", "model_monitor"]

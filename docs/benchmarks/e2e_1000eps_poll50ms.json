@@ -1,0 +1,51 @@
+{
+  "benchmark": "end_to_end_latency",
+  "host": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+    "cpus": 2,
+    "bootstrap_servers": "localhost:9094",
+    "measured_at": "2026-10-12T13:05:41+00:00"
+  },
+  "config": {
+    "rate_per_s": 1000.0,
+    "duration_s": 30.0,
+    "symbols": 12,
+    "fault_cmd": null,
+    "recover_cmd": null
+  },
+  "fault_marks": {},
+  "results": {
+    "sent": 30000,
+    "received_distinct": 30000,
+    "missing": 0,
+    "duplicates": 0,
+    "out_of_order_per_symbol": 0,
+    "send_duration_s": 30.004,
+    "achieved_send_rate": 999.9,
+    "send_schedule_slip_ms_p99": 91.909,
+    "end_to_end_latency": {
+      "n": 30000,
+      "mean_ms": 57.103,
+      "p50_ms": 53.251,
+      "p90_ms": 78.19,
+      "p95_ms": 83.806,
+      "p99_ms": 245.252,
+      "max_ms": 564.359
+    },
+    "processor_reported_latency": {
+      "n": 30000,
+      "mean_ms": 50.802,
+      "p50_ms": 47.019,
+      "p90_ms": 69.808,
+      "p95_ms": 75.088,
+      "p99_ms": 240.237,
+      "max_ms": 557.624
+    },
+    "max_arrival_gap_s": 0.105
+  },
+  "notes": [
+    "latency = just before produce() of the raw bar to arrival of its enriched event",
+    "kafka-to-kafka only: sinks, Redis and the API are not in the path"
+  ]
+}

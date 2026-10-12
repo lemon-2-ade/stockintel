@@ -137,7 +137,7 @@ class TopicProvisioner:
             resources = [
                 ConfigResource(
                     ConfigResource.Type.TOPIC,
-                    spec.name,
+                    str(spec.name.value),
                     incremental_configs=[
                         ConfigEntry(k, v, incremental_operation=AlterConfigOpType.SET)
                         for k, v in spec.configs(min_insync_replicas=mis).items()

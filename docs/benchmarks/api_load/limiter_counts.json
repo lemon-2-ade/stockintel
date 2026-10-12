@@ -1,0 +1,7 @@
+{
+  "scenario": "LimiterUser x5 for 20 s against the API with default limits (20 req/s, burst 60)",
+  "allowed_200": 461,
+  "rejected_429": 11772,
+  "source": "counted from the API access log of that run (status field); Locust marks both as success by design",
+  "expected_allowed": "about 20 req/s * 20 s + burst 60 = 460"
+}

@@ -1,0 +1,38 @@
+{
+  "benchmark": "kafka_produce",
+  "host": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+    "cpus": 2,
+    "bootstrap_servers": "localhost:9094",
+    "measured_at": "2026-10-12T13:00:56+00:00"
+  },
+  "config": {
+    "events": 200000,
+    "partitions": 3,
+    "symbols": 12,
+    "producer": "production config (idempotent, acks=all, lz4, linger 5 ms)",
+    "avg_payload_bytes": 317.9
+  },
+  "results": {
+    "elapsed_s": 1.662,
+    "events_per_s": 120345.6,
+    "delivered": 200000,
+    "failed": 0,
+    "local_queue_full_events": 10,
+    "serialize_events_per_s": 132925.6,
+    "ack_latency": {
+      "n": 200000,
+      "mean_ms": 418.841,
+      "p50_ms": 520.948,
+      "p90_ms": 828.963,
+      "p95_ms": 930.187,
+      "p99_ms": 951.522,
+      "max_ms": 955.043
+    }
+  },
+  "notes": [
+    "ack latency = produce() call to broker acknowledgement, including local queueing; with events produced back-to-back it reflects saturation, not an idle broker",
+    "serialization is done before the timed section and reported separately"
+  ]
+}
