@@ -10,9 +10,9 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 12 of 14 complete** (architecture, contracts,
+> **Project status: Phase 13 of 14 complete** (architecture, contracts,
 > infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow, the React dashboard, and observability: scrape config, Kafka lag exporter, Grafana dashboards and promtool-tested alerts, and measured load, latency and failure-injection results). See the [roadmap](docs/ROADMAP.md). This README is extended
+> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow, the React dashboard, and observability: scrape config, Kafka lag exporter, Grafana dashboards and promtool-tested alerts, and measured load, latency and failure-injection results, GitHub Actions CI and security scanning, and an optional Terraform data plane). See the [roadmap](docs/ROADMAP.md). This README is extended
 > as each phase lands; sections for features that do not exist yet are marked
 > *planned*.
 
@@ -161,14 +161,17 @@ Full diagrams, component responsibilities and design decisions:
 │       ├── db/              # SQLAlchemy models, engine, Alembic migrations
 │       ├── features/        # the one feature implementation (training + serving)
 │       ├── monitoring/      # PSI/KS drift statistics, reference profiles
-│       ├── observability/   # structured logging
+│       ├── observability/   # structured logging, Kafka consumer-lag exporter
 │       └── utils/           # retry/backoff
 ├── infrastructure/
 │   ├── docker/              # Python-service, MLflow and dashboard (nginx) images
 │   ├── postgres/init/       # first-boot SQL (MLflow DB/role)
-│   ├── prometheus/          # scrape config
-│   └── grafana/             # provisioned datasource + dashboards
-├── scripts/                 # benchmarks, simulations, the Kafka-free demo feed
+│   ├── prometheus/          # scrape config, alert rules, promtool tests
+│   ├── grafana/             # provisioned datasource + generated dashboards
+│   └── terraform/           # optional AWS data plane (validated, not applied)
+├── .github/workflows/       # CI and security scanning
+├── loadtests/               # Locust scenario for the API
+├── scripts/                 # benchmarks, dashboards generator, simulations, demo feed
 ├── tests/
 │   ├── unit/                # no infrastructure needed
 │   └── integration/         # against the running stack
@@ -178,8 +181,6 @@ Full diagrams, component responsibilities and design decisions:
 └── .env.example
 ```
 
-Planned additions, each in the phase that implements it: `.github/workflows/` and optional
-`infrastructure/terraform` (Phase 13).
 
 ## Getting started
 

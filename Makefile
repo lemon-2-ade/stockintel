@@ -193,3 +193,7 @@ loadtest-api: ## Locust against the API (start it with a high API_RATE_LIMIT_PER
 
 bench-summary: ## Regenerate the tables in docs/PERFORMANCE.md from docs/benchmarks/
 	uv run python scripts/summarize_benchmarks.py
+
+.PHONY: terraform-check
+terraform-check: ## fmt + validate the optional AWS Terraform (no AWS credentials needed)
+	cd infrastructure/terraform && terraform fmt -check -recursive && terraform init -backend=false -lockfile=readonly && terraform validate

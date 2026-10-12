@@ -40,3 +40,11 @@ mlartifacts/
 .DS_Store
 .directory
 dump.rdb
+
+# --- terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.auto.tfvars
+crash.log

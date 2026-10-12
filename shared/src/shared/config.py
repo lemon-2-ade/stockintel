@@ -52,11 +52,14 @@ class PostgresSettings(BaseSettings):
     pool_size: int = Field(default=5, ge=1)
     max_overflow: int = Field(default=5, ge=0)
     statement_timeout_ms: int = Field(default=15_000, ge=0)
+    # libpq's default is "prefer". RDS with rds.force_ssl needs "require" or stricter.
+    sslmode: Literal["disable", "allow", "prefer", "require", "verify-ca", "verify-full"] = "prefer"
 
     def sqlalchemy_url(self, driver: str = "postgresql+psycopg") -> str:
         """Connection URL. Contains the password: never log it."""
         password = quote_plus(self.password.get_secret_value())
-        return f"{driver}://{quote_plus(self.user)}:{password}@{self.host}:{self.port}/{self.db}"
+        url = f"{driver}://{quote_plus(self.user)}:{password}@{self.host}:{self.port}/{self.db}"
+        return url if self.sslmode == "prefer" else f"{url}?sslmode={self.sslmode}"
 
 
 class RedisSettings(BaseSettings):
@@ -67,6 +70,7 @@ class RedisSettings(BaseSettings):
     db: int = Field(default=0, ge=0)
     password: SecretStr | None = None
     socket_timeout_s: float = Field(default=2.0, gt=0)
+    ssl: bool = False  # ElastiCache with in-transit encryption requires TLS
 
     def client_kwargs(self) -> dict[str, object]:
         """Keyword arguments for ``redis.Redis`` / ``redis.asyncio.Redis``."""
@@ -78,6 +82,7 @@ class RedisSettings(BaseSettings):
             "socket_timeout": self.socket_timeout_s,
             "socket_connect_timeout": self.socket_timeout_s,
             "decode_responses": True,
+            **({"ssl": True} if self.ssl else {}),
         }
 
 

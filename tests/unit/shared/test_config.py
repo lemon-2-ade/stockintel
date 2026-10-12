@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from shared.config import KafkaSettings, PostgresSettings
+from shared.config import KafkaSettings, PostgresSettings, RedisSettings
 from shared.kafka.client_config import admin_config, consumer_config, producer_config
 
 
@@ -32,6 +32,17 @@ def test_postgres_url_escapes_and_hides_password() -> None:
         "postgresql+psycopg://stockintel:p%40ss%3Aw%2Frd%25@db:5432/stockintel"
     )
     assert "p@ss" not in repr(settings)
+
+
+def test_postgres_sslmode_is_added_only_when_not_default() -> None:
+    assert "sslmode" not in PostgresSettings(host="db").sqlalchemy_url()
+    url = PostgresSettings(host="db", sslmode="require").sqlalchemy_url()
+    assert url.endswith("/stockintel?sslmode=require")
+
+
+def test_redis_tls_is_opt_in() -> None:
+    assert "ssl" not in RedisSettings().client_kwargs()
+    assert RedisSettings(ssl=True).client_kwargs()["ssl"] is True
 
 
 def test_producer_is_idempotent_and_durable() -> None:

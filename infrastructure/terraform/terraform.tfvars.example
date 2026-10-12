@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars (git-ignored) and adjust.
+project     = "stockintel"
+environment = "dev"
+region      = "eu-west-1"
+
+# Cheaper, less durable settings for a throwaway environment:
+# db_instance_class   = "db.t4g.micro"
+# deletion_protection = false
+# msk_instance_type   = "kafka.t3.small"

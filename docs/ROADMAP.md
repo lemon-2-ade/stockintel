@@ -18,7 +18,7 @@ done; nothing is claimed that has not been run.
 | 10 | React + TS + Tailwind dashboard: candlesticks + volume + overlays, indicators, ML panel, anomaly feed, watchlist, pipeline status, themes | component tests; manual QA checklist; screenshots | **done** |
 | 11 | Prometheus metrics across services, Kafka lag exporter, Grafana dashboards, alert rules | dashboards provisioned from code; alert rules unit-tested with promtool | **done** ([OBSERVABILITY.md](OBSERVABILITY.md)) |
 | 12 | Load tests (Kafka producer benchmark, Locust/k6 for API), end-to-end latency, failure-injection tests, `PERFORMANCE.md` with measured results | reproducible benchmark scripts + raw results committed | **done** ([PERFORMANCE.md](PERFORMANCE.md)) |
-| 13 | GitHub Actions (lint, types, tests, frontend, image builds, integration stage with compose), dependency/secret scanning, optional Terraform for AWS | green pipeline on PR and main | |
+| 13 | GitHub Actions (lint, types, tests, frontend, image builds, integration stage with compose), dependency/secret scanning, optional Terraform for AWS | workflows lint clean and their commands pass on a clean clone; first hosted run not observed ([CI_CD.md](CI_CD.md)) | **done** |
 | 14 | Final documentation, diagrams, screenshots, limitations and future work | README complete; every number in docs traceable to a script | |
 
 ## ML problem definition
