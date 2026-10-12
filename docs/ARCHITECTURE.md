@@ -1,7 +1,7 @@
 # Architecture
 
-> Status: Phase 1 (foundations). Sections marked *planned* describe components
-> that later phases build. This document is updated as each phase lands.
+> Status: complete (Phases 1-14). Everything described here exists; what was
+> not verified, and what is missing, is listed in [LIMITATIONS.md](LIMITATIONS.md).
 
 ## 1. Goals and non-goals
 
@@ -21,8 +21,9 @@
 - Real trading, order routing, or investment advice. Predictions are
   statistical estimates and are labelled as such everywhere.
 - Tick-level, exchange-grade latency (microseconds). The design goal is
-  sub-second end-to-end latency on local hardware; see `PERFORMANCE.md` (Phase 12)
-  for measured numbers.
+  sub-second end-to-end latency on local hardware; see [PERFORMANCE.md](PERFORMANCE.md)
+  for measured numbers (the pipeline's median Kafka-to-Kafka latency is tens of
+  milliseconds once batching is tuned, hundreds with the defaults).
 - Multi-tenant auth. Watchlists use an opaque `user_id` until auth is added.
 
 ## 2. System overview
@@ -178,9 +179,9 @@ enabled for client-side lag/throughput metrics.
 **Security.** Secrets only via environment (`.env`, never committed), host
 ports bound to `127.0.0.1`, non-root containers for our images, strict input
 validation at every boundary, CORS allow-list and rate limiting at the API
-(Phase 4), dependency and secret scanning in CI (Phase 13).
+(Phase 4), dependency and secret scanning in CI ([CI_CD.md](CI_CD.md)).
 
-## 6. Local runtime topology (Phase 1)
+## 6. Local runtime topology
 
 ```mermaid
 flowchart LR
@@ -205,11 +206,34 @@ flowchart LR
     G --> P
 ```
 
+### Observability and delivery
+
+```mermaid
+flowchart LR
+    subgraph services[Every service]
+        M[/metrics<br/>sip_* families/]
+    end
+    LE[kafka-lag-exporter<br/>asks the broker] --> PR
+    M --> PR[(Prometheus<br/>scrape + alert rules)]
+    PR --> G[Grafana<br/>4 generated dashboards]
+    PR -.->|not configured| AM[Alertmanager]
+    GH[GitHub Actions] -->|lint, types, tests, rules, images, integration| CI{{CI}}
+    GH -->|pip-audit, npm audit, gitleaks| SEC{{Security}}
+    TF[Terraform<br/>MSK, RDS, ElastiCache, ECR] -.->|validated, not applied| AWS[(AWS)]
+```
+
+Details: [OBSERVABILITY.md](OBSERVABILITY.md), [CI_CD.md](CI_CD.md),
+[../infrastructure/terraform/README.md](../infrastructure/terraform/README.md).
+The Compose topology above predates the services and observability additions;
+`docker-compose.yml` is the source of truth for the full list.
+
 ## 7. Scalability outline
 
-Detailed in `KAFKA_DESIGN.md` now and in a dedicated scalability section in
-Phase 12, after measurements exist. In short: producers and consumers scale
+Detailed in [KAFKA_DESIGN.md](KAFKA_DESIGN.md), with measurements in
+[PERFORMANCE.md](PERFORMANCE.md). In short: producers and consumers scale
 horizontally up to the partition count; the API and inference service are
 stateless; Postgres is protected by batching, connection pooling and indexes;
-Redis absorbs read fan-out. No throughput figure is claimed until the
-benchmark in Phase 12 has measured it.
+Redis absorbs read fan-out. Measured on one small machine, the stream
+processor handled 3,000 events/s without loss and one producer 120k events/s,
+so ingestion is not the constraint; the API's database-backed routes are the
+first place load shows. No capacity claim is made beyond those measurements.

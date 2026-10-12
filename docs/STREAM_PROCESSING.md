@@ -172,7 +172,7 @@ How to read this honestly:
 The same run measured **~45 µs per bar** of compute (indicators + detectors +
 event construction), i.e. roughly **22,000 bars/s on one core**, in the
 2-vCPU build sandbox, excluding Kafka I/O and JSON (de)serialisation.
-End-to-end throughput with Kafka is measured in Phase 12.
+End-to-end throughput and latency with Kafka are in [PERFORMANCE.md](PERFORMANCE.md).
 
 ## 6. Metrics
 

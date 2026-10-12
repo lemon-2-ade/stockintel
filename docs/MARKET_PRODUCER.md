@@ -89,7 +89,8 @@ Bars are aligned to the interval grid and published when they **close**.
 On start, `PRODUCER_BACKFILL_BARS` already-closed bars are published at once
 (chart history), then the stream continues in real time. Event times are
 therefore never in the future. High-rate load generation for benchmarks is a
-separate tool (Phase 12), not a "speed-up" of event time.
+separate tool (`scripts/bench_pipeline.py`, see [PERFORMANCE.md](PERFORMANCE.md)), not a
+"speed-up" of event time.
 
 ## 3. Historical replay
 

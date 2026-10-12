@@ -187,6 +187,6 @@ Issues found during QA and fixed:
 * The chart loads the latest 500 bars; older history (keyset pagination in
   the API) is not wired to scrolling yet.
 * No end-to-end browser tests in CI yet (the Playwright QA above was run by
-  hand); Phase 13 adds CI.
+  hand); CI runs the component tests and the build, not a browser.
 * The production bundle is about 460 kB (147 kB gzipped), most of it the chart
   library and React; no code splitting.

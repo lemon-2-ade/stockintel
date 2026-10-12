@@ -71,7 +71,7 @@ Severities: `critical` (data or service is down), `warning` (degraded),
 
 Thresholds are starting points for the demo load, not tuned values; there is
 no production traffic to tune them against. Retune them from measured
-baselines (Phase 12 documents what could be measured).
+baselines ([PERFORMANCE.md](PERFORMANCE.md) has the first measurements).
 
 ### Testing the rules
 

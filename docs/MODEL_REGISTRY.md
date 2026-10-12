@@ -150,7 +150,8 @@ probabilities as pyfunc for all three model types.
 
 `scripts/bench_inference.py` (`make bench-inference`) sends requests built
 from real dataset rows, **sequentially from one client on the same host**:
-latency of an idle service, not throughput under load (that is Phase 12).
+latency of an idle service, not throughput under load (which was not
+measured; see "Not measured" in [PERFORMANCE.md](PERFORMANCE.md)).
 2,000 requests per batch size after 50 warm-up requests; XGBoost champion
 (version 2, 65 trees); 2 vCPU Intel Xeon @ 2.80 GHz cloud sandbox, Python
 3.12, uvicorn single worker. Raw results:

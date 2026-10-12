@@ -169,8 +169,10 @@ transactions later requires no consumer change).
 | Rebalance | `cooperative-sticky` assignment: only moved partitions pause; state for revoked partitions is flushed/dropped in the revoke callback |
 
 **Poison messages never block a partition and are never silently dropped.**
-Dead-lettered records can be inspected and, after a fix, replayed to their
-original topic (tooling in Phase 12).
+Dead-lettered records carry the reason and the original payload, so they can
+be inspected and, after a fix, replayed to their original topic. A replay tool
+was not built (see [LIMITATIONS.md](LIMITATIONS.md)); `kcat` or a short script
+does it.
 
 ## 6. Consumer groups, scaling and backpressure
 
@@ -187,7 +189,8 @@ original topic (tooling in Phase 12).
   `max.poll.interval.ms` to be evicted if genuinely stuck. The frontend is
   protected separately by server-side throttling of WebSocket pushes.
 - **Consumer lag** is the primary health signal: exported per group/partition
-  (librdkafka statistics + a lag exporter in Phase 11) and alerted on.
+  (consumer-reported gauges plus a broker-side exporter) and alerted on; see
+  [OBSERVABILITY.md](OBSERVABILITY.md).
 
 ## 7. Graceful shutdown
 

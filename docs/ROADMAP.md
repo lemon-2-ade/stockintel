@@ -19,7 +19,7 @@ done; nothing is claimed that has not been run.
 | 11 | Prometheus metrics across services, Kafka lag exporter, Grafana dashboards, alert rules | dashboards provisioned from code; alert rules unit-tested with promtool | **done** ([OBSERVABILITY.md](OBSERVABILITY.md)) |
 | 12 | Load tests (Kafka producer benchmark, Locust/k6 for API), end-to-end latency, failure-injection tests, `PERFORMANCE.md` with measured results | reproducible benchmark scripts + raw results committed | **done** ([PERFORMANCE.md](PERFORMANCE.md)) |
 | 13 | GitHub Actions (lint, types, tests, frontend, image builds, integration stage with compose), dependency/secret scanning, optional Terraform for AWS | workflows lint clean and their commands pass on a clean clone; first hosted run not observed ([CI_CD.md](CI_CD.md)) | **done** |
-| 14 | Final documentation, diagrams, screenshots, limitations and future work | README complete; every number in docs traceable to a script | |
+| 14 | Final documentation, diagrams, screenshots, limitations and future work | README complete; every number in docs traceable to a script | **done** ([LIMITATIONS.md](LIMITATIONS.md), [TRACEABILITY.md](TRACEABILITY.md)) |
 
 ## ML problem definition
 
@@ -35,15 +35,15 @@ baseline results: [ML_PIPELINE.md](ML_PIPELINE.md).
    snapshot of a CC0 Hugging Face dataset with daily bars for 12 US large
    caps (2010-2026). Details and the alternatives rejected are in
    [DATA_PIPELINE.md](DATA_PIPELINE.md).
-2. **Interval mismatch between training and live data (Phase 5/6).** Free
-   long-history data is daily, while the live demo streams sub-minute
-   simulated bars. Plan: features are scale-free (returns, ratios, z-scores,
-   normalised indicators) so the same pipeline applies to any bar interval,
-   and the simulator is calibrated per symbol from historical drift and
-   volatility. It will be stated plainly that a GBM simulator is a random walk
-   by construction, so a model *cannot* beat chance on simulated data. The live
-   demo shows the pipeline mechanics (serving, logging, drift detection), not
-   predictive power; predictive evaluation is done offline on historical data.
-3. **Anomaly ground truth (Phase 2/3).** The simulator knows which anomalies it
-   injected; exposing that label (e.g. an optional field or a separate audit
-   topic) allows measuring detector precision/recall.
+2. ~~**Interval mismatch between training and live data (Phase 5/6).**~~
+   Resolved in Phases 6 and 9. Free long-history data is daily while the live
+   demo streams sub-minute simulated bars, so features are scale-free and the
+   simulator is calibrated per symbol from history. A GBM simulator is a random
+   walk by construction, so a model cannot beat chance on it: the live demo
+   shows pipeline mechanics (serving, logging, drift detection), and the
+   monitor flags the interval mismatch as drift ([MONITORING.md](MONITORING.md)).
+   Predictive evaluation is offline, on historical data.
+3. ~~**Anomaly ground truth (Phase 2/3).**~~ Resolved in Phase 3: the simulator
+   labels each injected anomaly in a message header (`x-sim-injected-anomaly`),
+   and detector precision/recall is scored against it (`make evaluate-detectors`,
+   [STREAM_PROCESSING.md](STREAM_PROCESSING.md)).

@@ -10,11 +10,10 @@ with Docker Compose.
 > with model version, horizon and timestamp, and are kept visibly separate from
 > market observations and deterministic analytics.
 
-> **Project status: Phase 13 of 14 complete** (architecture, contracts,
-> infrastructure, training dataset, market simulator, Kafka producer, stream
-> processing with anomaly detection, storage sinks, the REST/WebSocket API, historical data validation, and the point-in-time feature library with leakage-safe splits, baselines, gradient-boosted models, a cost-aware backtest, the MLflow model registry with audited promotion, the inference service, and the prediction pipeline with outcome tracking, drift monitoring and a candidate-only retraining workflow, the React dashboard, and observability: scrape config, Kafka lag exporter, Grafana dashboards and promtool-tested alerts, and measured load, latency and failure-injection results, GitHub Actions CI and security scanning, and an optional Terraform data plane). See the [roadmap](docs/ROADMAP.md). This README is extended
-> as each phase lands; sections for features that do not exist yet are marked
-> *planned*.
+> **Project status: all 14 phases complete.** See the [roadmap](docs/ROADMAP.md),
+> and read [what was not verified](docs/LIMITATIONS.md) before relying on any
+> claim here: the Docker stack and the CI workflows were never run in the
+> environment this was built in, and the model has no demonstrated edge.
 
 ![Dashboard: live prices, deterministic analytics, rule-based anomalies and an experimental model estimate shown next to its base rate](docs/screenshots/dashboard-dark.png)
 
@@ -41,7 +40,24 @@ flowchart LR
 Full diagrams, component responsibilities and design decisions:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## What is in place (Phases 1-10)
+## Results at a glance
+
+Every figure links to the document and script that produce it
+([traceability](docs/TRACEABILITY.md)). Measured on one 2-vCPU machine against a
+real Kafka broker; they describe behaviour, not capacity.
+
+| Area | Result |
+| --- | --- |
+| Prediction skill | None demonstrated. Held-out 2023-2026 log loss 0.685 for LightGBM and XGBoost, identical to always predicting the base rate; ROC-AUC 0.505 and 0.508 ([MODELS.md](docs/MODELS.md)) |
+| Streaming | 0 events lost or duplicated at 200, 1,000 and 3,000 events/s through the stream processor; median Kafka-to-Kafka latency 36 ms with a 50 ms poll timeout, 295 ms with the default ([PERFORMANCE.md](docs/PERFORMANCE.md)) |
+| Failure behaviour | No loss after `kill -9` of the processor or a broker restart; duplicates appear and are absorbed by idempotent sinks. A 45 s session timeout stalled output for 45 s, so it was reduced to 10 s ([PERFORMANCE.md](docs/PERFORMANCE.md)) |
+| Producer | About 120k events/s from one idempotent `acks=all` producer to a local broker |
+| API | 0 failures; median 13 ms at 10 virtual users, about 140 requests/s peak with every dependency on the same two CPUs |
+| Inference | 2.6 ms median over HTTP for one instance ([MODEL_REGISTRY.md](docs/MODEL_REGISTRY.md)) |
+| Monitoring | Flags 24 of 28 inputs as drifted when a daily-bar model is fed 1-minute bars, as it should ([MONITORING.md](docs/MONITORING.md)) |
+| Quality gates | 349 unit tests, 36 integration tests, 28 dashboard tests; ruff, `mypy --strict`, 18 alert rules unit-tested with promtool |
+
+## What is in place
 
 - **Versioned event contracts** (`shared/src/shared/schemas`): Pydantic v2
   models for bars, enriched bars, anomalies, predictions and dead letters.
@@ -133,10 +149,10 @@ Full diagrams, component responsibilities and design decisions:
 | System of record | PostgreSQL 16, SQLAlchemy 2, Alembic | relational history, joins for monitoring ([ADR 0003](docs/adr/0003-storage-by-access-pattern.md)) |
 | Hot state | Redis | O(1) latest-value reads, pub/sub fan-out; never the source of truth |
 | API | FastAPI, WebSockets, Redis pub/sub | async I/O, typed contracts, OpenAPI |
-| ML (planned) | pandas, NumPy, scikit-learn, LightGBM/XGBoost, MLflow, Evidently-style drift metrics | tabular GBMs are the strong baseline for engineered features; MLflow for tracking + registry |
-| Frontend (planned) | React + TypeScript (Vite SPA, not Next.js), Tailwind, TradingView Lightweight Charts | financial charting primitives, canvas performance |
-| Observability | Prometheus, Grafana, structlog JSON logs | metrics + dashboards as code |
-| Tooling | uv workspace, ruff, mypy strict, pytest, pre-commit, Docker, GitHub Actions (planned) | fast, reproducible, one lockfile ([ADR 0005](docs/adr/0005-monorepo-uv-workspace.md)) |
+| ML | pandas, NumPy, scikit-learn, LightGBM/XGBoost, MLflow, Evidently-style drift metrics | tabular GBMs are the strong baseline for engineered features; MLflow for tracking + registry |
+| Frontend | React + TypeScript (Vite SPA, not Next.js), Tailwind, TradingView Lightweight Charts | financial charting primitives, canvas performance |
+| Observability | Prometheus, Grafana, structlog JSON logs | metrics, generated dashboards and promtool-tested alerts ([OBSERVABILITY.md](docs/OBSERVABILITY.md)) |
+| Tooling | uv workspace, ruff, mypy strict, pytest, pre-commit, Docker, GitHub Actions | fast, reproducible, one lockfile ([ADR 0005](docs/adr/0005-monorepo-uv-workspace.md)) |
 
 ## Repository layout
 
@@ -243,16 +259,17 @@ make help              # all targets
 - [Model registry and inference](docs/MODEL_REGISTRY.md): stages, gates, audit log, `/predict`, measured latency
 - [Prediction pipeline and monitoring](docs/MONITORING.md): features online, outcomes, drift, retraining, simulation results
 - [Dashboard](docs/FRONTEND.md): data flow, honesty rules, degradation, accessibility, QA checklist
+- [Observability](docs/OBSERVABILITY.md): scrape targets, Kafka lag exporter, dashboards, alert rules and their tests
+- [Performance](docs/PERFORMANCE.md): measured throughput, latency, failure injection, API load (generated tables)
+- [CI/CD](docs/CI_CD.md): workflows, security scanning, what was and was not verified
+- [Terraform](infrastructure/terraform/README.md): optional AWS data plane (validated, not applied)
+- [Limitations and future work](docs/LIMITATIONS.md)
+- [Where each number comes from](docs/TRACEABILITY.md)
 - [Roadmap](docs/ROADMAP.md): phases, exit criteria, open questions
 - [ADRs](docs/adr/): decision records
 
-Planned: `PERFORMANCE.md` (with measured
-results only), `DEPLOYMENT.md`.
+## Limitations
 
-## Known limitations (current)
-
-- Single Kafka broker (replication factor 1) locally; production values are
-  documented but not exercised here.
-- No authentication yet; watchlists use an opaque `user_id`.
-- No performance numbers are published until the Phase 12 benchmarks have
-  produced them.
+Short version: the model does not beat the base rate, live data is simulated,
+and the Docker stack and CI were not run where this was built. The full list,
+and what comes next, is in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
